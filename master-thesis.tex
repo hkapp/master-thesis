@@ -31,6 +31,7 @@
 \newcommand{\notnull}{\pls{NOT NULL}}
 
 \newcommand{\jitted}{JITted}
+\newcommand{\etal}{\textit{et al.}}
 
 \newcommand{\benchsystem}[1]{\textsf{#1}}
 \newcommand{\pvm}{\benchsystem{pvm}}
@@ -197,9 +198,6 @@ Finally, this project also serves as an exploration of the Graal and Truffle fra
 
 %Laurent's plan:
 %\begin{itemize}
-%\item programming language / compilation strategy in database (high
-%level overview of what exists and how their are implemented: interpreted
-%only, JITed, ahead-of-time compile etc... See MS SQLServer's T-SQL, Postgres, etc. Maybe touch on the use of llvm for query execution.
 %\item runtime specialization in programming language with JIT
 %\item runtime specialization of type representation in general (in plsql, in db)
 %\end{itemize}
@@ -214,16 +212,17 @@ Finally, this project also serves as an exploration of the Graal and Truffle fra
 %\end{itemize}
 %
 %\begin{itemize}
-%\item runtime specialization in dynamically compiled setup
-%\item runtime type specialization (boxing is kind of an example)
+%\item other truffle implementation of languages
 %\item walnut of course (dbjs)
 %\end{itemize}
 
-Although many optimizations have been added to the PL/SQL compiler and execution engine over the years, very few are documented. This is due to the technology being a proprietary product, owned by Oracle. The best publication for such matter is the white paper by Charles Whetherell \cite{freedomplsopt}. The author defines the relaxed assumptions on correctness that were made to allow more room for optimization in the PL/SQL compiler. We reuse his definition of \textit{freedom} to argue for the correctness of our own interpreter.
+Although many optimizations have been added to the PL/SQL compiler and execution engine over the years, very few are documented. This is due to the technology being a proprietary product, owned by Oracle. The best publication for such matter is the white paper by Charles Whetherell \cite{freedomplsopt}. The author defines the relaxed assumptions on correctness that were made to allow more room for optimization in the PL/SQL compiler. We would reuse his definition of \textit{freedom} if we were to argue about the correctness of our own interpreter.
 
 Other variants of procedural extension of SQL in other databases share the same kind of compilation and execution options. Transact-SQL \cite{tsqldoc}, which is Microsoft's extension to SQL, provides both an interpreted and a natively compiled mode. Like Oracle databases, the latter improves performance radically, and optimizations are performed for both execution alternatives. PostgreSQL only provides an AST interpreter for its procedural extension, called PL/pgSQL \cite{plpgsqldoc}. However, they started integrating just-in-time compilation into the database for executing SQL queries. Melnik \cite{postgresllvmjit} presented his results using a JIT compiler for LLVM to speed up query execution. Our approach goes in a similar direction, but we execute the procedural code, and do it from a higher-level representation.
 
-For these languages and PL/SQL, most of the focus for optimization is on interaction with SQL itself. Tight integration between the two is reinforced, in order to have inexpensive context switching.
+%For these languages and PL/SQL, most of the focus for optimization is on interaction with SQL itself. Tight integration between the two is reinforced, in order to have inexpensive context switching.
+
+Much work has been done in implenting runtime-specialized compilers and interpreters for various languages. The first example is the SELF \cite{self} compiler in 1992. The concept has been reused to improve the performance of modern, dynamically-typed languages, using JIT-technology. One such project is the IonMonkey \cite{jsvalue} JIT compiler for JavaScript, developped at Mozilla, which makes assumptions about argument values of function calls. Most of these projects focus on type specialization, as that is where there is the most room for optimization in dynamically-typed languages. \textit{Type specialization} performs optimizations based on the assumption that the type of an expression is always the same at execution time. Wang \etal{} \cite{rspec} use this technique to reduce the allocation overhead of the R interpreter, by performing boxing elimination with the runtime type information. Many JIT compilers have been implemented for dynamically typed languages to reap the most benefits from type specialization. We can cite Psyco \cite{psyco} for Python, Majic \cite{majic} for MatLab, and the work of Gal \etal{} on JavaScript \cite{gal, gal2}. Our work uses the Truffle framework and runs on the GraalVM, and many of the aforementioned languages have already been implemented using the same combination : Graal.JS \cite{trufflespec} for JavaScript, ZipPy \cite{zippy} for Python, FastR \cite{fastr} for R ...
 
 \todo{Complete this section}
 
@@ -1648,6 +1647,53 @@ Finally, we demonstrated that using speculative optimizations, dynamic compilati
 	Ropes: an alternative to strings.
 	In \textit{Software - Practice \& Experience}, volume 25, issue 12, pages 1315-1330.
 	Dec. 1995.
+	
+\bibproceeding{psyco}
+	{Armin Rigo}
+	{Representation-based just-in-time specialization and the psyco prototype for python}
+	{Proceedings of the 2004 ACM SIGPLAN symposium on Partial evaluation and semantics-based program manipulation}
+	{pages 15–26. Aug. 2004}
+	
+\bibproceeding{gal}
+	{Andreas  Gal,  Brendan  Eich,  Mike  Shaver,  David  Anderson,  Blake  Kaplan,  Graydon  Hoare,  David  Mandelin,  Boris Zbarsky, Jason Orendorff, Jess Ruderman, Edwin Smith, Rick Reitmair, Mohammad R. Haghighat, Michael Bebenita, Mason Chang, and Michael Franz}
+	{Trace-based just-in-time type specialization for dynamic languages}
+	{PLDI}
+	{pages 465 – 478. ACM, 2009}
+	
+\bibitem{gal2}
+	Mason Chang, Michael Bebenita, Alexander Yermolovich, Andreas Gal, Michael Franz.
+	Efficient just-in-time execution of dynamically typed languages via code specialization using precise runtime type inference.
+	Technical report, School of Computer Science, University of California, Irvine, 2007.
+
+\bibproceeding{majic}
+	{George Almási and David Padua}
+	{MaJIC: compiling MATLAB for speed and responsiveness}
+	{Proceedings of the ACM SIGPLAN 2002 conference on Programming language design and implementation}
+	{pages 294-303, May 2002}
+	
+\bibproceeding{rspec}
+	{Haichuan Wang, Peng Wu, and David Padua}
+	{Optimizing R VM: Allocation Removal and Path Length Reduction via Interpreter-level Specialization}
+	{Proceedings of Annual IEEE/ACM International Symposium on Code Generation and Optimization}
+	{2004}
+
+\bibproceeding{fastr}
+	{Lukas Stadler, Adam Welc, Christian Humer, and Mick Jordan}
+	{Optimizing R language execution via aggressive speculation}
+	{Proceedings of the 12th Symposium on Dynamic Languages}
+	{2016}
+	
+\bibproceeding{zippy}
+	{Christian Wimmer and Stefan Brunthaler}
+	{ZipPy on truffle: a fast and simple implementation of python}
+	{Proceedings of the 2013 companion publication for conference on Systems, programming, \& applications: software for humanity}
+	{Oct. 2013}
+	
+\bibproceeding{jsvalue}
+	{Henrique Nazare Santos, Pericles Alves, Igor Costa and Fernando Magno Quintao Pereira}
+	{Just-in-time value specialization}
+	{Proceedings of the 2013 IEEE/ACM International Symposium on Code Generation and Optimization}
+	{Feb. 2013}
 
 \end{thebibliography}
 
