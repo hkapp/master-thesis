@@ -1,0 +1,17 @@
+digraph {
+    rt -> left;
+    rt -> right;
+    left -> a;
+    left -> b;
+    right -> c;
+    right -> d;
+
+    rt [label="Add#1"];
+    left [label="Add#2"];
+    right [label="Add#3"];
+
+    a [shape=square];
+    b [shape=square];
+    c [shape=square];
+    d [shape=square];
+}

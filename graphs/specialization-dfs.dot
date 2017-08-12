@@ -1,0 +1,13 @@
+digraph {
+    graph [rankdir=LR];
+    node [shape=circle];
+    uninitialized -> s1 [label="i1"];
+    s1 -> s1 [label="i1"];
+    s1 -> s2 [label="i2"];
+    s2 -> s2 [label="i1,i2"];
+    s2 -> s3;
+    s2 [label="s1,s2"];
+    s3 [label="...", shape=none];
+    s3 -> generic;
+    generic -> generic;
+}

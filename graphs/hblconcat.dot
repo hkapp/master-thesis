@@ -1,0 +1,27 @@
+digraph {
+    node [shape=rect];
+    rankdir = "LR";
+
+    subgraph clusterC {
+        label = "C";
+        subgraph clusterA {
+            label = "A";
+            ll1->ll2;
+            ll2->ll3;
+            ll1 [label="'f'"];
+            ll2 [label="'o'"];
+            ll3 [label="'o'"];
+        }
+
+        subgraph clusterB {
+            label = "B";
+            ll4->ll5;
+            ll4 [label="'bar'"];
+            ll5 [label="'baz'"];
+        }
+
+        ll3->ll4;
+    }
+    ll5 -> null [arrowhead=tee];
+    null [shape=none, label=""];
+}
