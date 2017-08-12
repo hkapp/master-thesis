@@ -1,4 +1,4 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[twoside,11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
 \usepackage{amsmath}
@@ -107,24 +107,33 @@
 \author{Hugo Kapp 227942}
 \title{High-performance PL/SQL interpreter for Graal using Truffle}
 \date{August 18, 2017}
+\pagestyle{headings}
 
 \begin{document}
 
 \maketitle
 
-\pagebreak
+\cleardoublepage
+
+\section*{Abstract}
+\label{sec:abstract}
+\addcontentsline{toc}{section}{\nameref{sec:abstract}}
+\abstract{}
+
+\cleardoublepage
 
 \tableofcontents
+%\todo{show unnamed sections as well in the table of contents}
 
-\pagebreak
+\newpage
 
 \listoffigures
 
-%\pagebreak
+%\newpage
 
 %\listoftables
 
-\pagebreak
+\cleardoublepage
 \section{Introduction}
 
 %\textbf{Problematic / problem of the project :}
@@ -227,7 +236,7 @@ Much work has been done in implenting runtime-specialized compilers and interpre
 \todo{Complete this section}
 
 
-\pagebreak
+\cleardoublepage
 \section{The PL/SQL language}
 
 We give in this section an overview of the PL/SQL language, and explain its most relevant features for this project.
@@ -306,7 +315,7 @@ BEGIN
 END;
 	\end{lstlisting}
 	
-	\caption{Example of a simple PL/SQL program}
+	\caption{Example of a PL/SQL program issuing SQL queries}
 	\label{fig:plsraiseall}
 \end{figure}
 
@@ -344,7 +353,7 @@ SELECT pretty_print(salary) FROM emp;
 		\end{lstlisting}
 	\end{subfigure}
 	
-	\caption{Example of a simple PL/SQL program, and how it can be used in a query as a UDF. The '\sql{||}' is the concatenation operator.}
+	\caption{Example of a procedural PL/SQL program, and how it can be used in a query as a UDF. The '\sql{||}' is the concatenation operator.}
 	\label{fig:plsudfexample}
 \end{figure}
 
@@ -454,7 +463,7 @@ This approach is still limited by some factors. First, to ensure correct semanti
 
 In this project, we will try to improve performance over native compilation. We will focus on the use cases that already provides the best performance improvement in the native compilation case, for the same reasons. This means varying-length PL/SQL programs, called as UDFs in an SQL query. This ensures that we get significant performance improvements while still running typical PL/SQL workloads.
 
-\pagebreak
+\cleardoublepage
 \section{The Graal / Truffle ecosystem}
 
 This section gives insight into the environment used for this project, comprised of the Truffle framework and the Graal VM.
@@ -787,7 +796,7 @@ The Substrate VM allows fast interfacing with external C code and structures. Al
 
 This is very useful when interacting with lower-level APIs, and allows fast and efficient interoperability. We use these functionalities in the project to get direct access to the values provided by the database, without requiring a copy into the Java heap as would otherwise be necessary to access anything.
 
-\pagebreak
+\cleardoublepage
 \section{Implementing a subset of PL/SQL using Truffle}
 
 We describe here our approach for implementing a subset of PL/SQL using Truffle. It uses all the tools provided by the framework to achieve high-performance. It also makes use of the static typing of PL/SQL to make further improvements, leading to data representation specialization.
@@ -947,7 +956,7 @@ This solution for compilation is simple and reuses already existing tools.
 %\item Type-specific nodes, so no need for specializing on input type for choice of semantics
 %\end{itemize}
 
-\pagebreak
+\cleardoublepage
 \section{Efficiently implementing VARCHAR2}
 \label{sec:varcharimpl}
 
@@ -1235,7 +1244,7 @@ Even though this method has a high memory overhead, it is possible in certain ci
 
 Another problem with the current design is the fact that there still is some polymorphism in the values. Indeed, linked list nodes could either point to native or heap values. Although length and starting index fields can be factored out and granted access to without knowing the actual type, accessing the value itself (the buffer) requires a type check at runtime. This removes optimization opportunities for Graal, and makes virtualization much harder. Lack of virtualization in this case can be really damaging for performance, as it would require a lot of allocations at runtime, and incur great stress for the garbage collector. We describe some ways to alleviate this problem in 'Future work', section \ref{sec:futurework}.
 
-\pagebreak
+\cleardoublepage
 \section{Performance evaluation}
 \label{sec:benchmarks}
 
@@ -1517,7 +1526,7 @@ Combining this increase in running time plus the degradation due to the type cha
 %\item[Benchmarks] Run some that could really show terrible memory performance for both interpreters, but mostly focus on the previously run (short) benchmarks
 %\end{itemize}
 
-\pagebreak
+\cleardoublepage
 \section{Future work}
 \label{sec:futurework}
 
@@ -1541,7 +1550,7 @@ To improve on what we implemented so far, we could be using more of the speciali
 
 Finally, our \varchar{} implementation could be improved as well. Adding more type information into the list representation, adding more representations for specific patterns or richer specializations could be done. Furthermore, to reduce the memory overhead of our solution, classic list techniques could be used. For example, list unrolling is especially simple to do in runtime systems, with the help of profiling as well, and made even simpler by the use of horizon-based linked lists. Indeed, such a solution could have linked list nodes with a fixed number of entries, and another scope, specific to the nodes, help filling the arrays and keeping the values immutable. This reduces memory consumption and improves data locality.
 
-\pagebreak
+\cleardoublepage
 \section{Conclusion}
 %\begin{itemize}
 %\item high-level PL/SQL operators (e.g. string handling) allow us to make a lot of optimization under-the-hood -> wouldn't work in JS for example because type string is known, and optimization done by the programmer. Good idea to have them in a data-focused environment, to allow for optimizations that the programmer would never take time to write.
@@ -1555,11 +1564,15 @@ We proposed an implementation of a string data type, tailored to the use and spe
 
 Finally, we demonstrated that using speculative optimizations, dynamic compilation, code and data specialization was able to improve performance of typical data-centric workloads by 2 to 6 times over a basic natively compiled version of the same code. The degradation of the system when faced with a more complete set of inputs was proven to be relatively smooth, and still more efficient than a completely generic interpreter for the same code. We expect these kind of assumptions to hold in real systems, guaranteeing performance improvement that should translate well into production systems.
 
-\pagebreak
+\newpage
 \section*{Acknowledgements}
+\label{sec:acknowledgements}
+\addcontentsline{toc}{section}{\nameref{sec:acknowledgements}}
+\markboth{Acknowledgements}{Acknowledgements}
 
-\pagebreak
+\newpage
 \begin{thebibliography}{99}
+\label{sec:references}
 
 \bibitem{codd70}
   Edgar F. Codd,
@@ -1696,9 +1709,13 @@ Finally, we demonstrated that using speculative optimizations, dynamic compilati
 	{Feb. 2013}
 
 \end{thebibliography}
+\addcontentsline{toc}{section}{\nameref{sec:references}}
 
-\pagebreak
+\newpage
 \section*{Annex}
+\label{sec:annex}
+\addcontentsline{toc}{section}{\nameref{sec:annex}}
+\markboth{Annex}{Annex}
 
 Complete benchmarking results, plus some of the PL/SQL benchmarks code
 
