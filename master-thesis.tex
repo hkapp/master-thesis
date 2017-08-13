@@ -8,7 +8,7 @@
 \usepackage{subcaption}		% for subfigures
 \usepackage{listings}		% for \lstlisting
 \usepackage{xcolor}			% for \color
-\usepackage{hyperref}		% for \url
+\usepackage[hidelinks]{hyperref}		% for \url
 \usepackage[left=3cm,right=3cm,top=3cm,bottom=3cm]{geometry}
 
 %  === NEW COMMANDS ===
@@ -111,7 +111,73 @@
 
 \begin{document}
 
-\maketitle
+%\maketitle
+
+\begin{titlepage}
+    \begin{center}
+		\begin{minipage}{1.1\textwidth}
+  \centering
+  \hspace{-1.3cm}
+  $\vcenter{\hbox{\includegraphics[width=7cm]{./pics/EPFL-Logo.jpg}}}$
+  \hspace{2.5cm}
+  $\vcenter{\hbox{\includegraphics[width=6.5cm]{./pics/oracle-logo.png}}}$
+\end{minipage}    
+    
+%        \begin{figure}
+%        \centering
+%        \includegraphics[width=6cm]{./pics/EPFL-Logo.jpg}
+%        \hfill
+%        \includegraphics[width=6cm]{./pics/oracle-logo.png}
+%        \end{figure}
+        
+        \vspace*{3.5cm}
+        
+        \huge
+        \textbf{High-performance PL/SQL interpreter for Graal using Truffle}
+        
+        \vspace{2cm}
+        
+        \LARGE
+        \textbf{Hugo Kapp}
+        
+        \vspace{2.5cm}
+        
+        \Large
+        Master Thesis\\
+        \vspace{0.2cm}
+        Department of Computer Science\\
+        \vspace{0.2cm}
+        EPFL
+        
+		\vfill       
+		\normalsize
+        Work done during an internship at\\
+        \vspace{0.2cm}
+        \Large Oracle Labs \large
+        
+        \vspace{0.3cm}
+        
+        %A thesis presented for the degree of\\
+        %Doctor of Philosophy
+        
+        %\vspace{0.8cm}
+        
+        %\includegraphics[width=0.4\textwidth]{university}
+        
+		\begin{itemize}
+		\centering
+		\item[Professor] Martin Odersky
+		\item[EPFL Supervisor] Denys Shabalin
+		\item[Industry Supervisor] Laurent Daynès
+		\end{itemize}
+        
+	    \vspace{0.3cm}
+    
+		Spring 2017
+        
+	    \end{center}
+	
+\end{titlepage}
 
 \cleardoublepage
 
