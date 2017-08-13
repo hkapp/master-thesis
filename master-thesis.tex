@@ -9,7 +9,8 @@
 \usepackage{listings}		% for \lstlisting
 \usepackage{xcolor}			% for \color
 \usepackage[hidelinks]{hyperref}		% for \url
-\usepackage[left=3cm,right=3cm,top=3cm,bottom=3cm]{geometry}
+\usepackage[a4paper, width=15cm, top=3cm, bottom=3cm]{geometry} %inner=3cm,outer=2cm
+\usepackage[section]{placeins}
 
 %  === NEW COMMANDS ===
 
@@ -42,6 +43,7 @@
 
 \newcommand{\bench}[1]{\textsl{#1}}
 
+\newcommand{\maintitle}[1]{{\fontfamily{ppl}\selectfont\textbf{#1}}}
 \newcommand{\review}[1]{\textbf{\color{red} [#1]}}
 
 \newcommand{\bibpaper}[4]{
@@ -112,7 +114,7 @@
 \begin{document}
 
 %\maketitle
-
+\pagenumbering{roman}
 \begin{titlepage}
     \begin{center}
 		\begin{minipage}{1.1\textwidth}
@@ -133,12 +135,13 @@
         \vspace*{3.5cm}
         
         \huge
-        \textbf{High-performance PL/SQL interpreter for Graal using Truffle}
+        \maintitle{High-performance PL/SQL interpreter for Graal using Truffle}
+        %{\fontfamily{ppl}\selectfont\textbf{High-performance PL/SQL interpreter for Graal using Truffle}}
         
         \vspace{2cm}
         
         \LARGE
-        \textbf{Hugo Kapp}
+        \maintitle{Hugo Kapp}
         
         \vspace{2.5cm}
         
@@ -174,19 +177,28 @@
 	    \vspace{0.3cm}
     
 		Spring 2017
-        
+		
 	    \end{center}
 	
 \end{titlepage}
 
 \cleardoublepage
 
-\section*{Abstract}
+\vspace*{1cm}
+\section*{\hfil Abstract\hfil}
 \label{sec:abstract}
-\addcontentsline{toc}{section}{\nameref{sec:abstract}}
-\abstract{}
+%\addcontentsline{toc}{section}{Abstract}
 
-\cleardoublepage
+
+
+\newpage
+\vspace*{0.5cm}
+\section*{Acknowledgements}
+\label{sec:acknowledgements}
+%\addcontentsline{toc}{section}{\nameref{sec:acknowledgements}}
+%\markboth{Acknowledgements}{Acknowledgements}
+
+\newpage
 
 \tableofcontents
 %\todo{show unnamed sections as well in the table of contents}
@@ -201,6 +213,7 @@
 
 \cleardoublepage
 \section{Introduction}
+\pagenumbering{arabic}
 
 %\textbf{Problematic / problem of the project :}
 %\begin{itemize}
@@ -1629,12 +1642,6 @@ In this project, we implemented an efficient AST interpreter for PL/SQL using Gr
 We proposed an implementation of a string data type, tailored to the use and specificities of the PL/SQL language, and showed its improvement over classic solutions in terms of execution time. We showed that using multiple representations for a complex type such as string, and changing it to fit our needs is possible in a runtime environment using dynamic compilation and optimization, and made easier by having a clear abstraction of the data type, that hides the implementation details.
 
 Finally, we demonstrated that using speculative optimizations, dynamic compilation, code and data specialization was able to improve performance of typical data-centric workloads by 2 to 6 times over a basic natively compiled version of the same code. The degradation of the system when faced with a more complete set of inputs was proven to be relatively smooth, and still more efficient than a completely generic interpreter for the same code. We expect these kind of assumptions to hold in real systems, guaranteeing performance improvement that should translate well into production systems.
-
-\newpage
-\section*{Acknowledgements}
-\label{sec:acknowledgements}
-\addcontentsline{toc}{section}{\nameref{sec:acknowledgements}}
-\markboth{Acknowledgements}{Acknowledgements}
 
 \newpage
 \begin{thebibliography}{99}
