@@ -42,7 +42,7 @@
 \newcommand{\ncpg}{\benchsystem{ncomp-pragma}}
 \newcommand{\truffle}{\benchsystem{truffle}}
 
-\newcommand{\bench}[1]{\textsl{#1}}
+\newcommand{\bench}[1]{\textsf{#1}}
 
 \newcommand{\maintitle}[1]{{\fontfamily{ppl}\selectfont\textbf{#1}}}
 \newcommand{\startsection}[1]{
@@ -1837,5 +1837,37 @@ Finally, we demonstrated that using speculative optimizations, dynamic compilati
 \item some of the PL/SQL benchmarks code
 \item high-level description (one line) of every benchmark, plus types and varchar size used
 \end{itemize}
+
+We detail in this annex the different benchmarks used, and give the complete set of benchmarking results.
+
+We start with the numeric benchmarks. The code for the \simpleint{} and \plsi{} programs is exactly the same, except for the type used by the local variables. An example is given in Figure \ref{fig:mulbench}. The inputs for all of these functions are \oranum{} values, randomly generated integers between -1000 and +1000. Therefore, the first operation performed by these functions is to convert the arguments to the correct integer type currently benchmarked. All of these programs are then run on a table comprised of 10 millions such entries.
+
+Description of the numeric UDF benchmarks :
+\begin{itemize}
+\item[\bench{add}] Adds the two input numbers
+\item[\bench{sub}] Substracts the two input numbers
+\item[\bench{mul}] Multiplies the two input numbers
+\item[\bench{add3}] Adds the three input numbers
+\item[\bench{add4}] Adds the four input numbers
+\item[\bench{exp1}] \todo{}
+\item[\bench{scalprod}] Performs the scalar product of the vectors $(a, b)$ and $(c, d)$
+\item[\bench{wntexp}] Performs a complex parenthesised expression mixing both constants and arguments
+\item[\bench{const}] Returns a constant value. This is helpful to measure the overhead of context switching.
+\item[\bench{constadd}] Adds a constant value to the input number
+\item[\bench{search}] Simple \pls{CASE} expression with \todo{} branches, conditioned on the input values
+\end{itemize}
+
+Description of the numeric stored procedures :
+\begin{itemize}
+\item[\bench{introot}] Computes the integer square root of the input value (floor of the real root)
+\item[\bench{intdiv}] Computes the Euclidean quotient of dividing $a$ by $b$
+\item[\bench{intmod}] Computes the Euclidean remainder of dividing $a$ by $b$. This is a re-implementation of the \sql{MOD} builtin, which is only defined for \oranum{} values (requiring an expensive conversion)
+\item[\bench{gcd}] Computes the greatest common divisor (GCD) of $a$ and $b$
+\item[\bench{modexp}] Computes the modular exponent of the inputs, i.e. $a^b \mod c$
+\end{itemize}
+
+\todo{explain why no mod used}
+\todo{give numbers when mod actually used}
+\todo{give code for modexp and the CPU benchmarks}
 
 \end{document}
