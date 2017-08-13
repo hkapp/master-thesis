@@ -45,6 +45,11 @@
 \newcommand{\bench}[1]{\textsl{#1}}
 
 \newcommand{\maintitle}[1]{{\fontfamily{ppl}\selectfont\textbf{#1}}}
+\newcommand{\startsection}[1]{
+	\cleardoublepage
+	\section{#1}
+	\thispagestyle{basic}
+}
 \newcommand{\review}[1]{\textbf{\color{red} [#1]}}
 
 \newcommand{\bibpaper}[4]{
@@ -209,7 +214,13 @@
 \label{sec:abstract}
 %\addcontentsline{toc}{section}{Abstract}
 
+\vspace{0.5cm}
 
+In the age of Internet and ever-growing storage facilities, performance of database operations are critical. Much work has been done in the past decades to improve significantly the execution speed of data queries. To this end, specialized query languages have been designed, which allow for very specific fine-tuned optimizations. However, such languages tend to be limited in expressiveness, and make the writing of simple data validation or processing tasks very difficult. Procedural extensions to such querying languages lift this constraint, but their additional generality makes them a more complex target for optimizations.
+
+We present in this thesis a more efficient way to execute such programs inside the database, using modern \textit{just-in-time} (JIT) compilation, code specialization and aggressive speculative optimizations. Our work is based on the Truffle language framework and the Graal VM, two cutting edge techonologies developped at Oracle Labs. We implement a subset of the PL/SQL language, the procedural extension to SQL in Oracle databases using these tools. We show that the combination of dynamic optimization and code specialization can improve performance over the best execution engine available today. Furthermore, we assess the possibilities and benefits of type specialization inside a statically-typed language, that has a very complex type system. We also demonstrate that it is possible inside runtime-specialized systems to change between different data representations for the same data type at runtime, and that this can be used to improve performance significantly. Finally, we show that, using the Truffle framework and the capabilities of the Graal compiler, it is possible to write such execution engines with a small amount of high-level Java code.
+
+%current, generic native compiled option.
 
 \newpage
 \section*{Acknowledgements}
@@ -217,10 +228,17 @@
 %\addcontentsline{toc}{section}{\nameref{sec:acknowledgements}}
 %\markboth{Acknowledgements}{Acknowledgements}
 
+I would like to thank Professor Martin Odersky for allowing me to do my Masters thesis in his prestigious lab.
+
+I would then like to thank Denys Shabalin for his supervision during this project, and helping me keep track of time and due dates during my internship.
+
+I am most grateful to Laurent Daynès for helping me throughout this project. His vast knowledge on both databases and compilers were very helpful to aid my understanding of the systems at hand. I wish him all the best for the continuation of his project.
+
+Finally, I want to show all my gratitude towards my parents, who helped me get through my studies and all stages of my life.
+
 \newpage
 
 \tableofcontents
-%\todo{show unnamed sections as well in the table of contents}
 
 \newpage
 
@@ -230,11 +248,11 @@
 
 %\listoftables
 
-\cleardoublepage
-\pagestyle{content}
+%\cleardoublepage
+\startsection{Introduction}
 \pagenumbering{arabic}
-\section{Introduction}
-\thispagestyle{basic}
+\pagestyle{content}
+%\thispagestyle{basic}
 
 %\textbf{Problematic / problem of the project :}
 %\begin{itemize}
@@ -336,8 +354,8 @@ Much work has been done in implenting runtime-specialized compilers and interpre
 \todo{Complete this section}
 
 
-\cleardoublepage
-\section{The PL/SQL language}
+%\cleardoublepage
+\startsection{The PL/SQL language}
 
 We give in this section an overview of the PL/SQL language, and explain its most relevant features for this project.
 
@@ -563,8 +581,8 @@ This approach is still limited by some factors. First, to ensure correct semanti
 
 In this project, we will try to improve performance over native compilation. We will focus on the use cases that already provides the best performance improvement in the native compilation case, for the same reasons. This means varying-length PL/SQL programs, called as UDFs in an SQL query. This ensures that we get significant performance improvements while still running typical PL/SQL workloads.
 
-\cleardoublepage
-\section{The Graal / Truffle ecosystem}
+%\cleardoublepage
+\startsection{The Graal / Truffle ecosystem}
 
 This section gives insight into the environment used for this project, comprised of the Truffle framework and the Graal VM.
 
@@ -896,8 +914,8 @@ The Substrate VM allows fast interfacing with external C code and structures. Al
 
 This is very useful when interacting with lower-level APIs, and allows fast and efficient interoperability. We use these functionalities in the project to get direct access to the values provided by the database, without requiring a copy into the Java heap as would otherwise be necessary to access anything.
 
-\cleardoublepage
-\section{Implementing a subset of PL/SQL using Truffle}
+%\cleardoublepage
+\startsection{Implementing a subset of PL/SQL using Truffle}
 \thispagestyle{plain}
 
 We describe here our approach for implementing a subset of PL/SQL using Truffle. It uses all the tools provided by the framework to achieve high-performance. It also makes use of the static typing of PL/SQL to make further improvements, leading to data representation specialization.
@@ -1057,8 +1075,8 @@ This solution for compilation is simple and reuses already existing tools.
 %\item Type-specific nodes, so no need for specializing on input type for choice of semantics
 %\end{itemize}
 
-\cleardoublepage
-\section{Efficiently implementing VARCHAR2}
+%\cleardoublepage
+\startsection{Efficiently implementing VARCHAR2}
 \label{sec:varcharimpl}
 
 We describe in this section the design decisions we took for implementing the \varchar{} type. We extend on the concept of data representation specialization to improve performance.
@@ -1345,8 +1363,8 @@ Even though this method has a high memory overhead, it is possible in certain ci
 
 Another problem with the current design is the fact that there still is some polymorphism in the values. Indeed, linked list nodes could either point to native or heap values. Although length and starting index fields can be factored out and granted access to without knowing the actual type, accessing the value itself (the buffer) requires a type check at runtime. This removes optimization opportunities for Graal, and makes virtualization much harder. Lack of virtualization in this case can be really damaging for performance, as it would require a lot of allocations at runtime, and incur great stress for the garbage collector. We describe some ways to alleviate this problem in 'Future work', section \ref{sec:futurework}.
 
-\cleardoublepage
-\section{Performance evaluation}
+%\cleardoublepage
+\startsection{Performance evaluation}
 \label{sec:benchmarks}
 
 In this section, we show the performance of our system when compared to the database execution engines. We then validate the different design decisions taken. We close by looking at the memory consumption of the system.
@@ -1627,8 +1645,8 @@ Combining this increase in running time plus the degradation due to the type cha
 %\item[Benchmarks] Run some that could really show terrible memory performance for both interpreters, but mostly focus on the previously run (short) benchmarks
 %\end{itemize}
 
-\cleardoublepage
-\section{Future work}
+%\cleardoublepage
+\startsection{Future work}
 \label{sec:futurework}
 
 %\begin{itemize}
@@ -1651,8 +1669,8 @@ To improve on what we implemented so far, we could be using more of the speciali
 
 Finally, our \varchar{} implementation could be improved as well. Adding more type information into the list representation, adding more representations for specific patterns or richer specializations could be done. Furthermore, to reduce the memory overhead of our solution, classic list techniques could be used. For example, list unrolling is especially simple to do in runtime systems, with the help of profiling as well, and made even simpler by the use of horizon-based linked lists. Indeed, such a solution could have linked list nodes with a fixed number of entries, and another scope, specific to the nodes, help filling the arrays and keeping the values immutable. This reduces memory consumption and improves data locality.
 
-\cleardoublepage
-\section{Conclusion}
+%\cleardoublepage
+\startsection{Conclusion}
 %\begin{itemize}
 %\item high-level PL/SQL operators (e.g. string handling) allow us to make a lot of optimization under-the-hood -> wouldn't work in JS for example because type string is known, and optimization done by the programmer. Good idea to have them in a data-focused environment, to allow for optimizations that the programmer would never take time to write.
 %\item hard to tailor application performance on "unknown", very complex underlying system. Still requires great knowledge, even though Truffle promises perf without low-level tuning (did not make that much in the end, but conceptually)
@@ -1812,7 +1830,12 @@ Finally, we demonstrated that using speculative optimizations, dynamic compilati
 \label{sec:annex}
 \addcontentsline{toc}{section}{\nameref{sec:annex}}
 \markboth{Annex}{Annex}
+\thispagestyle{basic}
 
-Complete benchmarking results, plus some of the PL/SQL benchmarks code
+\begin{itemize}
+\item Complete benchmarking results
+\item some of the PL/SQL benchmarks code
+\item high-level description (one line) of every benchmark, plus types and varchar size used
+\end{itemize}
 
 \end{document}
