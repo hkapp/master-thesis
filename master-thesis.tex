@@ -11,6 +11,7 @@
 \usepackage[hidelinks]{hyperref}		% for \url
 \usepackage[a4paper, width=15cm, top=3cm, bottom=3cm]{geometry} %inner=3cm,outer=2cm
 \usepackage[section]{placeins}
+\usepackage{fancyhdr}
 
 %  === NEW COMMANDS ===
 
@@ -104,12 +105,31 @@
 	commentstyle=\color{java_comment}\itshape
 }
 
-% === DOCUMENT BEGINS ===
+% === FORMATTING ===
 
 \author{Hugo Kapp 227942}
 \title{High-performance PL/SQL interpreter for Graal using Truffle}
 \date{August 18, 2017}
-\pagestyle{headings}
+
+\fancypagestyle{content}{ %
+	\fancyhf{}
+	\fancyhead[LE]{\leftmark}
+	\fancyhead[RO]{\rightmark}
+	\fancyfoot[LE,RO]{\thepage}
+	\renewcommand{\headrulewidth}{1pt} % remove lines as well
+	\renewcommand{\footrulewidth}{0pt}
+}
+
+\fancypagestyle{basic}{ %
+	\fancyhf{} % remove everything
+	\renewcommand{\headrulewidth}{0pt} % remove lines as well
+	\renewcommand{\footrulewidth}{0pt}
+	\fancyfoot[LE,RO]{\thepage}
+}
+
+\pagestyle{basic}
+
+% === DOCUMENT BEGINS ===
 
 \begin{document}
 
@@ -192,7 +212,6 @@
 
 
 \newpage
-\vspace*{0.5cm}
 \section*{Acknowledgements}
 \label{sec:acknowledgements}
 %\addcontentsline{toc}{section}{\nameref{sec:acknowledgements}}
@@ -212,8 +231,10 @@
 %\listoftables
 
 \cleardoublepage
-\section{Introduction}
+\pagestyle{content}
 \pagenumbering{arabic}
+\section{Introduction}
+\thispagestyle{basic}
 
 %\textbf{Problematic / problem of the project :}
 %\begin{itemize}
@@ -432,7 +453,7 @@ SELECT pretty_print(salary) FROM emp;
 		\end{lstlisting}
 	\end{subfigure}
 	
-	\caption{Example of a procedural PL/SQL program, and how it can be used in a query as a UDF. The '\sql{||}' is the concatenation operator.}
+	\caption[Example of a procedural PL/SQL program, and how it can be used in a query as a UDF]{Example of a procedural PL/SQL program, and how it can be used in a query as a UDF. The '\sql{||}' is the concatenation operator.}
 	\label{fig:plsudfexample}
 \end{figure}
 
@@ -877,6 +898,7 @@ This is very useful when interacting with lower-level APIs, and allows fast and 
 
 \cleardoublepage
 \section{Implementing a subset of PL/SQL using Truffle}
+\thispagestyle{plain}
 
 We describe here our approach for implementing a subset of PL/SQL using Truffle. It uses all the tools provided by the framework to achieve high-performance. It also makes use of the static typing of PL/SQL to make further improvements, leading to data representation specialization.
 
@@ -1182,7 +1204,7 @@ However, this simple design does not meet the immutability constraint. To fix th
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=11cm]{./graphs/hblconcat.png}
-	\caption{Concatenation of two horizon-based linked lists. The boxes denote the scope, or horizon, of each value.}
+	\caption[Concatenation of two horizon-based linked lists]{Concatenation of two horizon-based linked lists. The boxes denote the scope, or horizon, of each value.}
 	\label{fig:hblconcat}
 \end{figure}
 
@@ -1644,6 +1666,7 @@ We proposed an implementation of a string data type, tailored to the use and spe
 Finally, we demonstrated that using speculative optimizations, dynamic compilation, code and data specialization was able to improve performance of typical data-centric workloads by 2 to 6 times over a basic natively compiled version of the same code. The degradation of the system when faced with a more complete set of inputs was proven to be relatively smooth, and still more efficient than a completely generic interpreter for the same code. We expect these kind of assumptions to hold in real systems, guaranteeing performance improvement that should translate well into production systems.
 
 \newpage
+\pagestyle{basic}
 \begin{thebibliography}{99}
 \label{sec:references}
 
