@@ -1464,7 +1464,7 @@ The results for all the benchmarks are shown in Figure \ref{fig:exp1a}. The prog
 \begin{figure}[tp]
 	\centering
 	\makebox[\textwidth][c]{\includegraphics[width=16cm]{./results/exp1a.png}}
-	\caption{Execution speed of the different UDF benchmarks (lower is better)}
+	\caption[Execution speed of the \simpleint{} UDF benchmarks]{Execution speed of the \simpleint{} UDF benchmarks (lower is better)}
 	\label{fig:exp1a}
 \end{figure}
 
@@ -1481,7 +1481,7 @@ Stored procedures are typically more computation-intensive than UDFs as they may
 \begin{figure}[tp]
 	\centering
 	\makebox[\textwidth][c]{\includegraphics[width=13cm]{./results/exp1b.png}}
-	\caption{Execution speed of the stored procedures benchmarks\\
+	\caption[Execution speed of the stored procedures benchmarks]{Execution speed of the stored procedures benchmarks\\
 			\hspace*{-5cm}*\textit{scaled down}}
 	\label{fig:exp1b}
 \end{figure}
@@ -1500,6 +1500,10 @@ To complete this numeric experimentation, we try to get rid completely of the co
 %	\caption{Speedup for computation-intensive \simpleint{} benchmarks. Speedup is measured compared to \pvm{} (higher is better).}
 %	\label{fig:exp1c}
 %\end{figure}
+
+The two functions implemented and measured respectively count the number of primes from 1 to 50'000, and count the number of prime factors every number from 1 to 20'000 has. Figure \ref{fig:exp1c} shows the results. We can see that the overhead of context-switching has been removed completely, as using \pls{PRAGMA UDF} does not give any improvement anymore. The native compilation option also provides its maximal speedup, as advertised in the Oracle documentation, of 7 times the performance of the PL/SQL intepreter (\pvm{}).
+
+The Truffle interpreter we implemented goes way further, and reaches up to 24 times the performance of the \pvm{}. This is mostly due to Just-In-Time compilation technology, that uses all the runtime information available to produce very efficient code. Branches and input values can be profiled, and complex three-valued logic based conditions can be reduced to the normal boolean case because no \plsnull{} condition is ever encountered. More generally, no \plsnull{} checks must ever be performed in any operator, because it is known that this program only handles \simpleint{}. Though we did not encode this specifically when parsing the program, Graal found out itself by profiling the seen values. The native compilation option provided by the database cannot do such a task, and uses more general comparison and branching operators that must perform the checks, even though they are unnecessary. Finally, the \ncomp{} system does not reach the optimal performance of a hand-crafted C program that would do the same task as implemented in PL/SQL, because it is performs heavy calls in a shared library to perform most of its operations. These calls are not easily optimized by classic C compilers (e.g. gcc), and thus do not give the CPU-instruction execution speed we could expect. The speedup of our Truffle interpreter when compared to the \ncomp{} option is 3.60x for the \bench{countprimes} benchmark, and 2.80x for the \bench{countfactors} benchmark. The speedup achieved is still dependent on the function, but is a very impressive result, keeping in mind the simple AST interpreter we wrote in Java.
 
 \begin{figure}[tb]
 	\centering
@@ -1539,10 +1543,6 @@ factors	& truffle	& 19.6 & 2.8 \\
 	\label{fig:exp1c}
 \end{figure}
 
-The two functions implemented and measured respectively count the number of primes from 1 to 50'000, and count the number of prime factors every number from 1 to 20'000 has. Figure \ref{fig:exp1c} shows the results. We can see that the overhead of context-switching has been removed completely, as using \pls{PRAGMA UDF} does not give any improvement anymore. The native compilation option also provides its maximal speedup, as advertised in the Oracle documentation, of 7 times the performance of the PL/SQL intepreter (\pvm{}).
-
-The Truffle interpreter we implemented goes way further, and reaches up to 24 times the performance of the \pvm{}. This is mostly due to Just-In-Time compilation technology, that uses all the runtime information available to produce very efficient code. Branches and input values can be profiled, and complex three-valued logic based conditions can be reduced to the normal boolean case because no \plsnull{} condition is ever encountered. More generally, no \plsnull{} checks must ever be performed in any operator, because it is known that this program only handles \simpleint{}. Though we did not encode this specifically when parsing the program, Graal found out itself by profiling the seen values. The native compilation option provided by the database cannot do such a task, and uses more general comparison and branching operators that must perform the checks, even though they are unnecessary. Finally, the \ncomp{} system does not reach the optimal performance of a hand-crafted C program that would do the same task as implemented in PL/SQL, because it is performs heavy calls in a shared library to perform most of its operations. These calls are not easily optimized by classic C compilers (e.g. gcc), and thus do not give the CPU-instruction execution speed we could expect. The speedup of our Truffle interpreter when compared to the \ncomp{} option is 3.60x for the \bench{countprimes} benchmark, and 2.80x for the \bench{countfactors} benchmark. The speedup achieved is still dependent on the function, but is a very impressive result, keeping in mind the simple AST interpreter we wrote in Java.
-
 
 \subsection{Impact of \plsnull{} handling}
 
@@ -1557,7 +1557,7 @@ First, because \plsi{} accepts the \plsnull{} value, execution now has to take t
 \begin{figure}[tp]
 	\centering
 	\makebox[\textwidth][c]{\includegraphics[width=16cm]{./results/exp2a.png}}
-	\caption{Impact on performance of using \plsi{} instead of \simpleint{}.\\
+	\caption[Impact on performance of using \plsi{} instead of \simpleint{}]{Impact on performance of using \plsi{} instead of \simpleint{}.\\
 			\small{}Execution speeds are compared for the same systems, with the two versions of the programs. Positive values show improvement, and negative values show a degradation of performance.}
 	\label{fig:exp2a}
 \end{figure}
@@ -1635,7 +1635,7 @@ The results of this experiment are shown in Figure \ref{fig:exp2b}. We can see a
 \begin{figure}[tp]
 	\centering
 	\makebox[\textwidth][c]{\includegraphics[scale=1]{./results/exp2b.png}}
-	\caption{Execution time of the Truffle interpreter in the multi-specialized case.\\ 			\hspace*{2cm}*\textit{scaled down}}
+	\caption[Execution time of the Truffle interpreter in the multi-specialized case]{Execution time of the Truffle interpreter in the multi-specialized case.\\ 			\hspace*{2cm}*\textit{scaled down}}
 	\label{fig:exp2b}
 \end{figure}
 
@@ -1646,14 +1646,14 @@ Combining this increase in running time plus the degradation due to the type cha
 
 \subsubsection{Comparison with the database}
 
-\begin{itemize}
-\item explain input and output copies
-\item no conversion like in the integer case
-\item small programs (one line) means small room for improvement
-\item explain the benchmarks !
-\item builtin calls also slightly more efficient !
-\item show lists are correctly virtualized / escape analyzed in simple cases
-\end{itemize}
+%\begin{itemize}
+%\item explain input and output copies
+%\item no conversion like in the integer case
+%\item small programs (one line) means small room for improvement
+%\item explain the benchmarks !
+%\item builtin calls also slightly more efficient !
+%\item show lists are correctly virtualized / escape analyzed in simple cases
+%\end{itemize}
 
 We now evaluate the performance of our \varchar{} implementation. The methodology is very similar to the numeric case. We perform micro-benchmarking on SQL queries ran on tables of 10 million entries. The difference will come from the systems compared. When running \varchar{}-based programs, the difference between the interpreter and the native compilation is rather small. This is due to the nature of string operations on immutable values : they tend to involve a lot of copies. Furthermore, the result must be stored in a specific buffer. Therefore, a copy is always necessary, if only just to return the value.
 
@@ -1675,7 +1675,7 @@ To get some benefits from our complex solution, we must increase the amount of c
 \begin{figure}[tp]
 	\centering
 	\makebox[\textwidth][c]{\includegraphics[scale=1]{./results/exp3b.png}}
-	\caption{Execution speed of the \varchar{} stored procedures\\
+	\caption[Execution speed of the \varchar{} stored procedures]{Execution speed of the \varchar{} stored procedures\\
 			\hspace*{-4cm}*\textit{scaled down}}
 	\label{fig:exp3b}
 \end{figure}
@@ -1703,7 +1703,7 @@ To compare these different systems, we run them on the same benchmarks as above.
 \begin{figure}[tp]
 	\centering
 	\makebox[\textwidth][c]{\includegraphics[scale=1]{./results/exp3c.png}}
-	\caption{Comparison of the different \varchar{} implementations (lower is better). Execution time is normalized to the time taken by the \ncpg{} system (shown as the horizontal line).}
+	\caption[Comparison of the different \varchar{} implementations]{Comparison of the different \varchar{} implementations (lower is better). Execution time is normalized to the time taken by the \ncpg{} system (shown as the horizontal line).}
 	\label{fig:exp3c}
 \end{figure}
 
