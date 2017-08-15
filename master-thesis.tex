@@ -45,6 +45,7 @@
 
 \newcommand{\bench}[1]{\textsf{#1}}
 \newcolumntype{R}{>{\raggedleft\arraybackslash}m{9mm}}
+\newcolumntype{P}[1]{>{\raggedleft\arraybackslash}p{#1}}
 %\let\newline\\\arraybackslash\hspace{0pt}
 
 \newcommand{\maintitle}[1]{{\fontfamily{ppl}\selectfont\textbf{#1}}}
@@ -89,7 +90,8 @@
 	language=SQL,
 	tabsize=4,
 	keywordstyle=\color{brown},
-	morekeywords={PROCEDURE,FUNCTION,IS,BEGIN,END,LOOP,FOR,WHILE}
+	morekeywords={PROCEDURE,FUNCTION,IS,BEGIN,END,LOOP,FOR,WHILE},
+	frame=L
 }
 
 \lstdefinestyle{SQL}{
@@ -1937,16 +1939,19 @@ Finally, we demonstrated that using speculative optimizations, dynamic compilati
 \markboth{Annex}{Annex}
 \thispagestyle{basic}
 
-\begin{itemize}
-\item Complete benchmarking results
-\item some of the PL/SQL benchmarks code
-\item high-level description (one line) of every benchmark, plus types and varchar size used
-\end{itemize}
+%\begin{itemize}
+%\item Complete benchmarking results
+%\item some of the PL/SQL benchmarks code
+%\item high-level description (one line) of every benchmark, plus types and varchar size used
+%\end{itemize}
 
 We detail in this annex the different benchmarks used, and give the complete set of benchmarking results.
 
+\subsection*{Numeric benchmarks}
+
 We start with the numeric benchmarks. The code for the \simpleint{} and \plsi{} programs is exactly the same, except for the type used by the local variables. An example is given in Figure \ref{fig:mulbench}. The inputs for all of these functions are \oranum{} values, randomly generated integers between -1000 and +1000. Therefore, the first operation performed by these functions is to convert the arguments to the correct integer type currently benchmarked. All of these programs are then run on a table comprised of 10 millions such entries.
 
+\vspace{5mm}
 Description of the numeric UDF benchmarks :
 \begin{itemize}
 \item[\bench{add}] Adds the two input numbers
@@ -1962,6 +1967,7 @@ Description of the numeric UDF benchmarks :
 \item[\bench{search}] Simple \pls{CASE} expression with \todo{} branches, conditioned on the input values
 \end{itemize}
 
+\vspace{5mm}
 Description of the numeric stored procedures :
 \begin{itemize}
 \item[\bench{introot}] Computes the integer square root of the input value (floor of the real root)
@@ -1971,8 +1977,80 @@ Description of the numeric stored procedures :
 \item[\bench{modexp}] Computes the modular exponent of the inputs, i.e. $a^b \mod c$
 \end{itemize}
 
-\todo{explain why no mod used}
-\todo{give numbers when mod actually used}
-\todo{give code for modexp and the CPU benchmarks}
+\vspace{5mm}
+Description of the numeric computation-intensive programs :
+\begin{itemize}
+\item[\bench{countprimes}] Counts the number of prime numbers between 1 and 50'000
+\item[\bench{countfactors}] Counts the total number of prime factors every number from 1 to 20'000 has
+\end{itemize}
+
+%The code for the most computation-intensive benchmarks, i.e. \bench{modexp}, \bench{countprimes} and \bench{countfactors} is given in Figures \ref{fig:modexp}, \ref{fig:countprimes} and \ref{fig:countfactors}.
+
+%\begin{figure}[p]
+%	\lstinputlisting[style=PLSQL]{./code/modexp.sql}
+%	\caption{PL/SQL code for the \bench{modexp} benchmark}
+%	\label{fig:modexp}
+%\end{figure}
+%
+%\begin{figure}[p]
+%	\lstinputlisting[style=PLSQL]{./code/countprimes.sql}
+%	\caption{PL/SQL code for the \bench{countprimes} benchmark}
+%	\label{fig:countprimes}
+%\end{figure}
+%
+%\begin{figure}[p]
+%	\lstinputlisting[style=PLSQL]{./code/countfactors.sql}
+%	\caption{PL/SQL code for the \bench{countfactors} benchmark}
+%	\label{fig:countfactors}
+%\end{figure}
+
+%\todo{explain why no mod used}\\
+%\todo{give numbers when mod actually used}
+
+\subsection*{\varchar{} benchmarks}
+
+We explain further the set of benchmarks used to measure the performance of the \varchar{} implementations. These programs are all ran on tables with 10 million randomly generated entries. The length of the strings used depend on the benchmark. We generate three main types of strings :
+\begin{itemize}
+\item Short : length is between 1 and 10
+\item Medium : length is between 1 and 100
+\item Long : length is between 1 and 1000
+\end{itemize}
+
+The length of every entry is picked at random, uniformly distributed between the min and the max. The strings generated only contain uppercase letters, to increase the chance of the \pls{REPLACE} benchmarks doing some actual work. We now give details on the every benchmarks, including the lengths of the strings used.
+\begin{center}
+\begin{tabular}{|l|P{3cm}|p{9cm}|}
+\hline
+Name				& Lengths used		& Description\\
+\hline
+concatshort		& short				& concatenates the inputs\\
+concatlong		& long				& concatenates the inputs\\
+substring		& long, plus two numbers			& call to the \pls{SUBSTR} builtin\\
+replace			& long, short, short	& call to the \pls{REPLACE} builtin\\
+length			& long				& call to the \pls{LENGTH} builtin\\
+copyshort		& short				& returns the input value. This requires a copy of the the input to the output buffer, and helps measure the cost of context switching.\\
+copymedium		& medium				& returns the input value\\
+copylong			& long				& returns the input value\\
+concatlitval		& medium				& returns the concatenation of a fixed literal with the input (common pattern)\\
+concatvallit		& medium				& returns the concatenation of the input with a fixed literal (common pattern)\\
+concatvallitval	& medium				& returns the concatenation of an input with a fixed literal and another input (common pattern)\\
+concatlitvallit	& medium				& returns the concatenation of a fixed literal with the input and another fixed literal (common pattern)\\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{|l|P{3cm}|p{9cm}|}
+\hline
+Name				& Lengths used		& Description\\
+\hline
+concatnright		& medium, short, one number				& appends the second input $n$ times to the first input\\
+concatnleft		& medium, short, one number				& prepends the second input $n$ times to the first input\\
+reverse			& medium				& returns the input string, read backwards. It does so by appending every input character in reverse order, using \pls{SUBSTR} and concatenation\\
+readint		& short numeric string (only digits)				& returns the integer encoded by this string's sequence of digits. This is a re-implementation of the \pls{TO\_NUMBER} builtin for integers.\\
+noccurrences		& long, short				& counts the number of times the first input contains the second\\
+removevowels		& medium				& removes the vowels in the input string. Uses 6 calls to \pls{REPLACE}\\
+\hline
+\end{tabular}
+\end{center}
 
 \end{document}
