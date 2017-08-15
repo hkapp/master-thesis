@@ -1632,8 +1632,8 @@ The results of this experiment are shown in Figure \ref{fig:exp2b}. We can see a
 
 \begin{figure}[tp]
 	\centering
-	\makebox[\textwidth][c]{\includegraphics[width=15cm]{./results/exp2b.png}}
-	\caption{Execution time of the benchmarks in the presence of \plsnull{}. The time is normalized to 100, the 'NOT NULL' case acting as the baseline.}
+	\makebox[\textwidth][c]{\includegraphics[scale=1]{./results/exp2b.png}}
+	\caption{Execution time of the Truffle interpreter in the multi-specialized case.\\ 			\hspace*{2cm}*\textit{scaled down}}
 	\label{fig:exp2b}
 \end{figure}
 
@@ -1641,9 +1641,25 @@ Combining this increase in running time plus the degradation due to the type cha
 
 
 \subsection{\varchar{} performance}
-%\begin{itemize}
-%\item would have been interesting to implement and compare with rope based design
-%\end{itemize}
+
+\subsubsection{Comparison with the database}
+
+\begin{itemize}
+\item explain input and output copies
+\item no conversion like in the integer case
+\item small programs (one line) means small room for improvement
+\end{itemize}
+
+We now evaluate the performance of our \varchar{} implementation. The methodology is very similar to the numeric case. We perform micro-benchmarking on SQL queries ran on tables of 10 million entries. The difference will come from the systems compared. When running \varchar{}-based programs, the difference between the interpreter and the native compilation is rather small. This is due to the nature of string operations on immutable values : they tend to involve a lot of copies. Furthermore, the result must be stored in a specific buffer. Therefore, a copy is always necessary, if only just to return the value.
+
+We start once again with the UDF case. We wrote a set of very small, UDF-like programs, calling the \varchar{} builtins we implemented. Results for these benchmarks is shown in Figure \ref{fig:exp3a}. 
+
+\begin{figure}[tp]
+	\centering
+	\makebox[\textwidth][c]{\includegraphics[scale=1]{./results/exp3a.png}}
+	\caption{Execution speed for the \varchar{} UDF benchmarks}
+	\label{fig:exp3a}
+\end{figure}
 
 \textit{TODO}
 
