@@ -12,6 +12,7 @@
 \usepackage[a4paper, width=15cm, top=3cm, bottom=3cm]{geometry} %inner=3cm,outer=2cm
 \usepackage[section]{placeins}
 \usepackage{fancyhdr}
+\usepackage{array}			% to fix column widths
 
 %  === NEW COMMANDS ===
 
@@ -43,6 +44,8 @@
 \newcommand{\truffle}{\benchsystem{truffle}}
 
 \newcommand{\bench}[1]{\textsf{#1}}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}m{9mm}}
+%\let\newline\\\arraybackslash\hspace{0pt}
 
 \newcommand{\maintitle}[1]{{\fontfamily{ppl}\selectfont\textbf{#1}}}
 \newcommand{\startsection}[1]{
@@ -379,7 +382,7 @@ CREATE TABLE emp (name VARCHAR2, salary NUMBER);
 	
 	\begin{subfigure}[h]{\textwidth}
 		\centering
-		\begin{tabular}{|l|r|}
+		\begin{tabular}{| l | r |}
 			\hline
 			name & salary \\
 			\hline
@@ -1535,9 +1538,12 @@ Measuring the impact of the \plsnull{} value on performance can be tricky for PL
 Instead, we will apply the benchmark queries we used so far on similar, but not exactly identical tables. The baseline will be measured on the same tables we before, with no \plsnull{}. We then measure the first variant on the same table, with one \plsnull{} entry added. This entry has one null field, and all the others remain classic values. The second variant has one added entry per column, with each such entry having exactly one \plsnull{} field. An example is shown in Figure \ref{fig:nullvartabs}. Once the programs have been run on these alternative tables, the Truffle nodes have more than one specialization active at the same time. Re-running the program on the same table allows us to measure the time taken by the generic code. This gives us the degradation when the code is not perfectly specialized, and has to take care of all the possible inputs.
 
 \begin{figure}[h]
+	\centering
+	\vspace{6mm}
 	\begin{subfigure}[t]{0.3\textwidth}
 		\centering
-		\begin{tabular}{|r|r|r|}
+		\caption{Basic table}
+		\begin{tabular}{|R|R|R|}
 			\hline
 			a & b & c \\
 			\hline
@@ -1546,11 +1552,11 @@ Instead, we will apply the benchmark queries we used so far on similar, but not 
 			501 & 7 & 1042 \\
 			\hline
 		\end{tabular}
-		\caption{Basic table}
 	\end{subfigure}
 	\begin{subfigure}[t]{0.3\textwidth}
 		\centering
-		\begin{tabular}{|r|r|r|}
+		\caption{One-null variant}
+		\begin{tabular}{|R|R|R|}
 			\hline
 			a & b & c \\
 			\hline
@@ -1560,11 +1566,11 @@ Instead, we will apply the benchmark queries we used so far on similar, but not 
 			\plsnull{} & 2 & 1 \\
 			\hline
 		\end{tabular}
-		\caption{One-null variant}
 	\end{subfigure}
 	\begin{subfigure}[t]{0.3\textwidth}
 		\centering
-		\begin{tabular}{|r|r|r|}
+		\caption{All-null variant}
+		\begin{tabular}{|R|R|R|}
 			\hline
 			a & b & c \\
 			\hline
@@ -1576,7 +1582,6 @@ Instead, we will apply the benchmark queries we used so far on similar, but not 
 			1 & 503 & \plsnull{} \\
 			\hline
 		\end{tabular}
-		\caption{All-null variant}
 	\end{subfigure}
 	
 	\caption{Example of the \plsnull{} variants of the tables used for the multi-specialization experiment.}
