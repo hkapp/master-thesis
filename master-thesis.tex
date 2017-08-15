@@ -1650,6 +1650,7 @@ Combining this increase in running time plus the degradation due to the type cha
 \item small programs (one line) means small room for improvement
 \item explain the benchmarks !
 \item builtin calls also slightly more efficient !
+\item show lists are correctly virtualized / escape analyzed in simple cases
 \end{itemize}
 
 We now evaluate the performance of our \varchar{} implementation. The methodology is very similar to the numeric case. We perform micro-benchmarking on SQL queries ran on tables of 10 million entries. The difference will come from the systems compared. When running \varchar{}-based programs, the difference between the interpreter and the native compilation is rather small. This is due to the nature of string operations on immutable values : they tend to involve a lot of copies. Furthermore, the result must be stored in a specific buffer. Therefore, a copy is always necessary, if only just to return the value.
@@ -1695,15 +1696,24 @@ In order to do so, we re-implement efficiently our system with less data represe
 
 \textbf{Full system} (3 representations). This is the system described in this project, containing the first two cases plus the linked-list based representation for concatenation.
 
-To compare these different systems, we run them on the same benchmark shown above. We display the execution times in Figure \ref{fig:exp3c}.
+To compare these different systems, we run them on the same benchmarks as above. To show the relation between these systems, but also with the database implementation, we normalize the results to the time taken by \ncpg{}. This ensures that the results from the different, high-varying execution time programs can all be shown in a meaningful way. On top of that, it gives us a simple way to see which implementations perform better or worse than \ncpg{}. We display these results in Figure \ref{fig:exp3c}.
 
-\subsection{Performance improvement summary}
+\begin{figure}[tp]
+	\centering
+	\makebox[\textwidth][c]{\includegraphics[scale=1]{./results/exp3c.png}}
+	\caption{Comparison of the different \varchar{} implementations (lower is better). Execution time is normalized to the time taken by the \ncpg{} system (shown as the horizontal line).}
+	\label{fig:exp3c}
+\end{figure}
 
-\textit{TODO}
+As expected, the first two systems have some additional overhead compared to our full system. This is mainly due to duplicate copy operations. Even in the simplest case, like \bench{concatshort}, both the 1- and 2-representations variants must copy the values to be concatenated into a heap buffer, before copying this value out to the return buffer. Although this very simple case seems easy to optimize, it is very hard to make it work in the general case. This would require us to know where the return value comes from, which cannot necessarily be found statically. This becomes a huge cost when copying large strings, leading to poor performances on \bench{concatlong}. The overhead of the naive approach, i.e. with only heap values, is about +80\% on average when compared to the linked-list solution. This is more than enough to make this system worse than the currently-existing solution (i.e. \ncpg{}).
 
-\subsection{Memory consumption}
+The second system also performs worse than our complete design. It does remove a lot of useless copies, for example when performing a \pls{LENGTH} or \pls{SUBSTRING} operation. The fact that input values are not always copied is way more efficient. This allows the second variant to approach the performance of the full system. In some cases, they exhibit comparable speeds : \bench{susbtring}, \bench{replace}, \bench{length} ... This is due to the fact that these benchmarks do not use concatenation, which is the main difference between the 2-representation implementation and the final one. For other operators, the specialization path taken by the two versions is the same, because the inputs are always of the same kind (native values). Still, this system is slower than the linked-list approach when it comes to concatenation, because it performs an extra copy into the heap. With this, the overhead averages 37\%. In cases where the complete design was already on par with \ncpg{}, this is enough to tip the balance and make the 'base values only' version slower.
 
-\textit{TODO}
+reverse only bench where full system worse : why, how much, how solveable
+One can notice that the overheads in the last 3 programs is very small. In the case of the 1-representation case, this is only due to input copy. But the \bench{reverse} benchmark is the only one that goes the other way around : removing data representations actually improved performance ! This speedup is quite significant : 24 \% when using only heap values, and up to 41 \% with support for native values. This benchmark makes heavy use of substring and concatenation operators to reverse the input string. Our design being optimized for concatenation, this should not happen. The reason for this is the fact that the function concatenates a lot of single characters strings in a loop. As we saw when discussing the limitations of our solution, the memory overhead for small strings is significant. Thus, most of the time is spent allocating a lot of memory for wrapping a single character. Because these allocations are performed in a loop, they cannot be escape analyzed by Graal, and the memory must be used. In the simpler variants. concatenating one character is very fast, because it only means copying one character. To solve this problem, we could integrate this buffer-based concatenation for this specific case. By profiling the length of the strings being concatenated, it should be possible to detect this bad case, and use buffers instead of lists. This is left for future work.
+
+overall, our system is the best (ofc) cases where same as db perf, other systems fuck up $\rightarrow$ our complex repr is needed to perform well. even though abstracted, gives best perf, at least as good as native como (not bad !)
+Overall, we saw our final solution is performing better than the others. This validates our design, showing that it is possible to improve performances using multiple data representations. When no improvement is possible, our system behaves like the current database implementation of \varchar{}, and never worse. Even though it uses a lot of high-level abstractions, which could represent an overhead in simple programs, these are optimized away by the compiler when possible, and leaves us with the simplest implementation possible. On more complex programs, these abstractions showed their benefits when building strings, copying characters only when the result is complete.
 
 
 %\subsection{Results}
