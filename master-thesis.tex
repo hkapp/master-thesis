@@ -24,7 +24,7 @@
 
 \newcommand{\sql}[1]{\texttt{#1}}
 
-\newcommand{\pls}[1]{\texttt{#1}}
+\newcommand{\pls}[1]{\small\texttt{#1}\normalsize}
 \newcommand{\plstype}[1]{\pls{#1}}
 \newcommand{\varchar}{\plstype{VARCHAR2}}
 \newcommand{\oranum}{\plstype{NUMBER}}
@@ -1461,8 +1461,8 @@ The results for all the benchmarks are shown in Figure \ref{fig:exp1a}. The prog
 
 \begin{figure}[tp]
 	\centering
-	\makebox[\textwidth][c]{\includegraphics[width=18cm]{./results/exp1a.png}}
-	\caption{Speedup of the different PL/SQL execution modes for UDF benchmarks (higher is better). Speedup is measured compared to \pvm{}.}
+	\makebox[\textwidth][c]{\includegraphics[width=16cm]{./results/exp1a.png}}
+	\caption{Execution speed of the different UDF benchmarks (lower is better)}
 	\label{fig:exp1a}
 \end{figure}
 
@@ -1479,7 +1479,8 @@ Stored procedures are typically more computation-intensive than UDFs as they may
 \begin{figure}[tp]
 	\centering
 	\makebox[\textwidth][c]{\includegraphics[width=13cm]{./results/exp1b.png}}
-	\caption{Speedup of the different PL/SQL execution modes for stored procedures. Speedup is measured compared to \pvm{} (higher is better).}
+	\caption{Execution speed of the stored procedures benchmarks\\
+			\hspace*{-5cm}*\textit{scaled down}}
 	\label{fig:exp1b}
 \end{figure}
 
@@ -1491,10 +1492,48 @@ We can already see that the time spent executing the PL/SQL code is longer, beca
 
 To complete this numeric experimentation, we try to get rid completely of the conversion and context switching cost. To do that, we implement two very computation-intensive functions in PL/SQL, that will be called only once on a single-entry table. Although not interesting in itself because it does not show performance for a typical use of PL/SQL, this experiment will be useful in determining the actual speedup that comes from executing PL/SQL code with our alternative.
 
-\begin{figure}[tp]
+%\begin{figure}[tp]
+%	\centering
+%	\makebox[\textwidth][c]{\includegraphics[width=12cm]{./results/exp1c.png}}
+%	\caption{Speedup for computation-intensive \simpleint{} benchmarks. Speedup is measured compared to \pvm{} (higher is better).}
+%	\label{fig:exp1c}
+%\end{figure}
+
+\begin{figure}[tb]
 	\centering
-	\makebox[\textwidth][c]{\includegraphics[width=12cm]{./results/exp1c.png}}
-	\caption{Speedup for computation-intensive \simpleint{} benchmarks. Speedup is measured compared to \pvm{} (higher is better).}
+	\vspace{4mm}
+	\begin{subfigure}[c]{0.4\textwidth}
+		\centering
+		\caption{Execution speed (seconds)}
+		\begin{tabular}{|l|r|r|}
+\cline{2-3}
+\multicolumn{1}{c|}{} & countprimes & countfactors \\
+%			& countprimes & countfactors \\
+\hline
+pvm 			& 37.14 & 37.50 \\
+ncomp		& 5.63 & 4.93 \\
+ncomp pragma & 5.59 & 4.92 \\
+truffle		& 1.56 & 1.76 \\
+\hline
+		\end{tabular}
+	\end{subfigure}\hspace{3cm}%
+	\begin{subfigure}[c]{0.4\textwidth}
+		\centering
+		\caption{Speedup achieved}
+		\begin{tabular}{|l|l|r r|}
+\cline{3-4}
+\multicolumn{2}{c|}{} & pvm & ncomp \\% \hline&			& pvm & ncomp \\
+\hline
+count	& ncomp		& 6.6 & - \\
+primes	& truffle	& 23.8 & 3.6 \\
+\hline
+count	& ncomp		& 7.0 & - \\
+factors	& truffle	& 19.6 & 2.8 \\
+\hline
+		\end{tabular}
+	\end{subfigure}
+	
+	\caption{Results of the computation-intensive \simpleint{} benchmarks}
 	\label{fig:exp1c}
 \end{figure}
 
@@ -1515,8 +1554,9 @@ First, because \plsi{} accepts the \plsnull{} value, execution now has to take t
 
 \begin{figure}[tp]
 	\centering
-	\makebox[\textwidth][c]{\includegraphics[width=18cm]{./results/exp2a.png}}
-	\caption{Performance degradation when using the \plsi{} type. Positive values mean speedup, negative are slowdowns.}
+	\makebox[\textwidth][c]{\includegraphics[width=16cm]{./results/exp2a.png}}
+	\caption{Impact on performance of using \plsi{} instead of \simpleint{}.\\
+			\small{}Execution speeds are compared for the same systems, with the two versions of the programs. Positive values show improvement, and negative values show a degradation of performance.}
 	\label{fig:exp2a}
 \end{figure}
 
