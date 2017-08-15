@@ -1648,11 +1648,13 @@ Combining this increase in running time plus the degradation due to the type cha
 \item explain input and output copies
 \item no conversion like in the integer case
 \item small programs (one line) means small room for improvement
+\item explain the benchmarks !
+\item builtin calls also slightly more efficient !
 \end{itemize}
 
 We now evaluate the performance of our \varchar{} implementation. The methodology is very similar to the numeric case. We perform micro-benchmarking on SQL queries ran on tables of 10 million entries. The difference will come from the systems compared. When running \varchar{}-based programs, the difference between the interpreter and the native compilation is rather small. This is due to the nature of string operations on immutable values : they tend to involve a lot of copies. Furthermore, the result must be stored in a specific buffer. Therefore, a copy is always necessary, if only just to return the value.
 
-We start once again with the UDF case. We wrote a set of very small, UDF-like programs, calling the \varchar{} builtins we implemented. Results for these benchmarks is shown in Figure \ref{fig:exp3a}. 
+We start once again with the UDF case. We wrote a set of very small, UDF-like programs, calling the \varchar{} builtins we implemented. Results for these benchmarks is shown in Figure \ref{fig:exp3a}. We can see a steady improvement over almost all the benchmarks. In some cases, the speed of our interpreter is the same as what could be achieved before, but it is never worse. Overall, we get a 25\% improvement in execution speed.
 
 \begin{figure}[tp]
 	\centering
@@ -1661,7 +1663,39 @@ We start once again with the UDF case. We wrote a set of very small, UDF-like pr
 	\label{fig:exp3a}
 \end{figure}
 
-\textit{TODO}
+This result is not as good as the speedup we achieved in the \simpleint{} case for UDFs. The main reason for that is the lack of conversion. In the numeric benchmarks, every input value had to be converted. This operation was done using code specialization, which is more efficient than doing it normally. Furthermore, due to the need for a copy of the result into the output buffer, a significant portion of the execution time is dedicated to unavoidable buffer copy, and that for every evaluated system. The cost of such a copy is made explicit in the \bench{copyshort}, \bench{copymedium} and \bench{copylong} benchmarks.
+
+Another interesting thing to note here is the fact that the cheaper context switching Walnut provides us allows us to outperform the database. Otherwise, these benchmarks are too simple to give any room for optimization. For example, in the \bench{concatshort} case, the operation must take the two input buffers, and copy them both into the output buffer. There is no way around it, and not really anyway to speed that process up. However, we still get a 55\% improvement on this benchmark, due to the optimized context switching. Notice that this does not translate to more intensive benchmarks, like \bench{concatlong}, because the longer time spent copying the buffers minimizes the impact of context switching. On such benchmarks (\bench{concatlong} and \bench{replace}), we get no improvement with our solution, but we do not perform worse. This shows that the solution we use reaches the speed of the most simple and bare-metal solution for basic operations.
+
+To get some benefits from our complex solution, we must increase the amount of computation performed. As we did before, we devise another set of benchmarks, more computation-intensive, which we'll say represent a stored procedure workload. We run these programs on the same number of table entries (10 million). We present these results in Figure \ref{fig:exp3b}.
+
+\begin{figure}[tp]
+	\centering
+	\makebox[\textwidth][c]{\includegraphics[scale=1]{./results/exp3b.png}}
+	\caption{Execution speed of the \varchar{} stored procedures\\
+			\hspace*{-4cm}*\textit{scaled down}}
+	\label{fig:exp3b}
+\end{figure}
+
+The first thing to note here is the difference in behaviours between the \bench{concatnright} and \bench{concatnleft}. These two programs build a string by appending (resp. prepending) $n$ times the same string, where $n$ is an input. In the database systems (both \ncomp{} and \ncpg{}), building a string by prepending takes a lot more time then when appending, although the arguments to the functions are the same. This is typical of classic concatenation algorithms, where one would over-allocate the buffer, and keep appending to the current value, like the \java{StringBuilder} class in Java. Although this method is very efficient when building strings by appending, prepending becomes very expensive because a new buffer must be allocated every time, and the current value must be copied. Our solution does not suffer from this, because appending and prepeding are done without copy, by updating a data structure.
+
+Another interesting thing to note on these results is the case of \bench{removevowels}. This benchmark performs multiple calls to the \pls{REPLACE} builtin. Although our implementation of this functionality showed no improvement over the \ncpg{} system in the case of a single call, it yields a 2.4x improvement in this benchmark. The reason for it is that \bench{removevowels}, as its name suggests, removes some letters, i.e. it calls \pls{REPLACE} with a \plsnull{} replacement. We took the opportunity to optimize specifically this case. One specialized version of our algorithm thus only deals with deletion cases. This makes the algorithm much simpler, and leads to this significant speedup.
+
+Overall, we get greater improvements in the stored procedure case than when dealing with UDFs. The average speedup over the best database system (\ncpg{}) is 2.7x, with a maximum at 8.5x. This maximum is achieved for the \bench{noccurrences} benchmark, which performs a lot of substrings and comparisons. In our system, the former is almost a no-op (it only adds an index to a runtime value), which explains this huge improvement.
+
+\subsubsection{Impact of having multiple representations}
+
+We just saw that the implementation of \varchar{} we provide is rather efficient, as it never performs worse than the database, and usually has significant speedups. We are now interested in knowing what is the reason for this improvement. More specificaly, we wish to validate our design, i.e. show that the faster execution indeed comes from having multiple data representations for string values, with a specialized representation for fast concatenation.
+
+In order to do so, we re-implement efficiently our system with less data representations available. We will compare the following cases:
+
+\textbf{Only heap values available} (1 representation). This requires copy of input values into Java arrays, allocated on the heap. Although this obviously degrades performance, this variant is the simplest. The fact that only one representation is possible simplifies the implementation, and allows for more specific optimizations that would be cumbersome to write otherwise. We use here classic over-allocated buffers for concatenation, making for cheaper append.
+
+\textbf{Only base values available}. This includes heap values and native values (so 2 representations). The burden of input copy is removed, but implementation has more cases and different specializations. Upon concatenation, values are copied into a buffer, which delays the copy of external values.
+
+\textbf{Full system} (3 representations). This is the system described in this project, containing the first two cases plus the linked-list based representation for concatenation.
+
+To compare these different systems, we run them on the same benchmark shown above. We display the execution times in Figure \ref{fig:exp3c}.
 
 \subsection{Performance improvement summary}
 
