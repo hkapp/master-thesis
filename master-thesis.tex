@@ -665,6 +665,14 @@ Another goal for this project is to provide an efficient multi-lingual (or polyg
 
 To solve that open problem, the Graal team decided to bring all the languages to the JVM, while providing a simple way to integrate or re-implement the desired languages : the Truffle Framework. Efforts have also been made in order for the optimizations of Graal to take into account the fact that not all languages executed are necessarily Java at their core, and could use very different patterns.
 
+\begin{figure}
+	\centering
+	\hspace*{2cm}
+	\includegraphics[scale=0.7]{./graphs/GraalVMStack.png}
+	\caption{The complete GraalVM + Truffle stack}
+	\label{fig:graalvmstack}
+\end{figure}
+
 \subsection{The Truffle framework}
 
 \subsubsection{A language framework on top of Graal}
