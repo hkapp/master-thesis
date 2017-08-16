@@ -221,9 +221,9 @@
 
 \vspace{0.5cm}
 
-In the age of Internet and ever-growing storage facilities, performance of database operations are critical. Much work has been done in the past decades to improve significantly the execution speed of data queries. To this end, specialized query languages have been designed, which allow for very specific fine-tuned optimizations. However, such languages tend to be limited in expressiveness, and make the writing of simple data validation or processing tasks very difficult. Procedural extensions to such querying languages lift this constraint, but their additional generality makes them a more complex target for optimizations.
+In the age of Internet and ever-growing storage facilities, performance of database operations are critical. Much work has been done in the past decades to improve significantly the execution speed of data queries. To this end, specialized query languages have been designed, which allow for very specific, fine-tuned optimizations. However, such languages tend to be limited in expressiveness, and make the writing of simple data validation or processing tasks very difficult. Procedural extensions to such querying languages lift this constraint, but their additional generality makes them a more complex target for optimizations.
 
-We present in this thesis a more efficient way to execute such programs inside the database, using modern \textit{just-in-time} (JIT) compilation, code specialization and aggressive speculative optimizations. Our work is based on the Truffle language framework and the Graal VM, two cutting edge techonologies developped at Oracle Labs. We implement a subset of the PL/SQL language, the procedural extension to SQL in Oracle databases using these tools. We show that the combination of dynamic optimization and code specialization can improve performance over the best execution engine available today. Furthermore, we assess the possibilities and benefits of type specialization inside a statically-typed language, that has a very complex type system. We also demonstrate that it is possible inside runtime-specialized systems to change between different data representations for the same data type at runtime, and that this can be used to improve performance significantly. Finally, we show that, using the Truffle framework and the capabilities of the Graal compiler, it is possible to write such execution engines with a small amount of high-level Java code.
+We present in this thesis a more efficient way to execute procedural programs inside the database, using modern \textit{just-in-time} (JIT) compilation, code specialization and aggressive speculative optimizations. Our work is based on the Truffle language framework and the Graal VM, two cutting edge techonologies developped at Oracle Labs. We implement a subset of the PL/SQL language, the procedural extension to SQL in Oracle databases using these tools. We show that the combination of dynamic optimization and code specialization can improve performance over the best PL/SQL execution engines available today. Furthermore, we assess the possibilities and benefits of type specialization inside a statically-typed language, that has a very complex type system. We also demonstrate that it is possible inside runtime-specialized systems to change between different data representations for the same data type at runtime, and that this can be used to improve performance significantly. Finally, we show that, using the Truffle framework and the capabilities of the Graal compiler, it is possible to write such execution engines with a small amount of high-level Java code.
 
 %current, generic native compiled option.
 
@@ -239,7 +239,7 @@ I would then like to thank Denys Shabalin for his supervision during this projec
 
 I am most grateful to Laurent Daynès for helping me throughout this project. His vast knowledge on both databases and compilers were very helpful to aid my understanding of the systems at hand. I wish him all the best for the continuation of his project.
 
-Finally, I want to show all my gratitude towards my parents, who helped me get through my studies and all stages of my life.
+Finally, I want to show all my gratitude to my parents, who helped me get through my studies and every stage of my life.
 
 \newpage
 
@@ -271,15 +271,17 @@ Finally, I want to show all my gratitude towards my parents, who helped me get t
 
 Databases today are a central part of any application. They are used to store information about customers, transactions, identifiers and passwords, and much more. With large and cheap memory storage, and a widespread access to the Internet, these tables typically hold millions of records. It is therefore crucial that getting access to this data and performing simple processing steps is as efficient as possible.% Simple processing tasks, like validation and conversions of input values, or expansion of missing records should also be done inside the database.
 
-Query languages, like SQL, are very efficient ways of fetching and modifying data. However, their limited expressiveness restricts the set of efficient processing that can be done. To lift this restriction, procedural languages running inside the database are usually added to allow for more flexibility. Performance of these languages is critical because of the mass of data they handle, but the fact that they are full-fledged programming languages, with much more generality, makes optimization harder than with a querying language. Data representation mismatch between space-optimized values provided by the database, and the need for computation efficient representations by the procedural languages makes the task of improving performance even harder.
+Query languages, like SQL, provide a very efficient way of fetching and modifying data. However, their limited expressiveness restricts the set of processing tasks that can be performed efficiently. To lift this restriction, procedural languages also running inside the database are usually added to allow for more flexibility. Performance of these languages is critical because of the mass of data they handle, but the fact that they are full-fledged programming languages, with much more generality than querying languages, makes optimization much harder. Furthermore, frequent communications between the two kinds of languages incurs, on top of context switching overhead, a mismatch in data representation : space-optimized values provided by the database are typically not efficient when it comes to performing generic-purpse computation.
+%and the need for computation efficient representations by the procedural languages makes the task of improving performance even harder.
 
-In this project, we look at the Oracle database and its embedded procedural language called PL/SQL, and try to improve its performance. We do so by using the latest \textit{Just-In-Time} compilation technology, evaluating the programs on an aggressively-optimizing JVM called Graal. We make use of the speculative optimizations provided by the Graal compiler, as well as code specialization framework of Truffle, two projects developped at Oracle Labs, to implement an efficient PL/SQL interpreter. We tackle the specific problem of data representation by performing runtime data representation specialization. This allows us to use multiple value representations for the same data type, and choose the best fit for the current program at runtime.
+In this project, we look at the Oracle database and its embedded procedural language called PL/SQL, and try to improve its performance. We do so by using the latest \textit{Just-In-Time} compilation technology, code specialization, and runtime data representation specialization. This is done by implementing an efficient AST interpreter using the Truffle language framework, a rich API to write self-specializing interpreters. PL/SQL programs are then run on top of the Graal VM, a high-performance implementation of the Java Virtual Machine that aims at bringing more languages to the JVM. It uses aggressive speculative optimizations to execute Java programs at high speed, enabling foreign languages implementation using the Truffle framework to benefit directly from these optimizations. Truffle and Graal are two open-source projects, actively developped at Oracle Labs. We tackle the specific problem of having data representations not suited for computation by performing runtime data representation specialization. This allows us to use multiple value representations for the same data type, and choose the best fit for the current program at runtime.
+%We use the speculative optimizations provided by the Graal compiler, as well as code specialization framework of Truffle, two projects developped at Oracle Labs, to implement an efficient PL/SQL interpreter. 
 
-This thesis answers the following questions :
+This thesis will answer the following questions :
 \begin{itemize}
-\item Is it possible to use code specialization, in the specific context of data-centric languages like PL/SQL, to improve performance ?
-\item Can the use of different specialized data representations, changed at runtime, be beneficial for the execution speed of such programs ?
-\item How does such techniques affect the runtime memory consumption of the programs ?
+\item Can a language interpreter, based on runtime code specialization, improve execution time of the said language ? And by how much ?
+\item Is this true, even in the very specific context of data-centric languages like PL/SQL?
+\item Can we use different specialized data representations for the same type, and change them at runtime ? What kind of impact does this have on the execution of the program ?
 \end{itemize}
 
 %These querying languages typically have very high performance, but low expressiveness. To allow for 
@@ -316,7 +318,7 @@ We complete this introduction by listing the precise goals of this project and d
 
 We have multiple goals for this project. The first should be to improve the performance of PL/SQL programs beyond what is currently reachable with the options available in the Oracle database.
 
-The Oracle database already provides high-performance execution modes for PL/SQL programs, namely a native compilation option that compiles the code down to machine code. It also supports many programmer hints and options, which improve the execution time significantly. We show that current JIT technology, using advanced runtime optimizations, can go faster than the solutions compiled ahead-of-time. We demonstrate how runtime code and data specialization can help improve performance by focusing only on the relevant parts of the code. We confirm that, even in very small and data-intensive programs like the ones typically run with PL/SQL, runtime data representation specialization can lead to very efficient execution.
+The Oracle database already provides high-performance execution modes for PL/SQL programs, namely a native compilation option that compiles the PL/SQL programs down to machine code. It also supports many programmer hints and options, which improve the execution time significantly. We show that current JIT technology, using advanced runtime optimizations, can go faster than the solutions compiled ahead-of-time. We demonstrate how runtime code and data specialization can help improve performance by focusing only on the relevant parts of the code. We confirm that, even in very small and data-intensive programs like the ones typically run with PL/SQL, runtime data representation specialization can lead to very efficient execution.
 
 We limit ourselves to specific programs, which represent the typical uses of PL/SQL inside the database. Contrary to general-purpose languages, that are used to write computation intensive and generally long programs, PL/SQL functions are usually called inside SQL queries. We will focus on small functions, called as UDFs (User-Defined Functions), to demonstrate the advantage of our solution on a typical workload.
 
@@ -324,7 +326,7 @@ We limit ourselves to specific programs, which represent the typical uses of PL/
 
 However, we do not provide a full re-implementation of the language. Instead, the system designed here should be an incremental replacement of the classic PL/SQL execution engines. We implement a subset of the language only, which should be representative enough, as well as easily extensible. For example, we do not provide support for any SQL queries inside the PL/SQL code, and focus on procedural programs only. This incremental subset approach allows for a smoother integration of our system into the Oracle database, while keeping the original engines as backup.
 
-Finally, this project also serves as an exploration of the Graal and Truffle framework. We show that implementing a high-performance AST interpreter is possible, and made simple by writing everything in a high-level programming language like Java, using the Truffle API. We prove that complex specialization optimization are easy to write, and can be tailored to our needs to improve performance. We also investigate the memory-consumption of such runtime-optimized methods, to figure out if it could be reasonably deployed on production systems.
+Finally, this project also serves as an exploration of the Graal and Truffle framework. We show that implementing a high-performance AST interpreter is possible, and made simple by writing everything in a high-level programming language like Java, using the Truffle API. We prove that complex specialization optimization are easy to write, and can be tailored to our needs to improve performance further. We also investigate the benefits of code specialization in a statically-typed context, a technique usually reserved for dynamically-typed languages.
 
 \subsection{Previous work}
 
@@ -350,13 +352,13 @@ Finally, this project also serves as an exploration of the Graal and Truffle fra
 
 Although many optimizations have been added to the PL/SQL compiler and execution engine over the years, very few are documented. This is due to the technology being a proprietary product, owned by Oracle. The best publication for such matter is the white paper by Charles Whetherell \cite{freedomplsopt}. The author defines the relaxed assumptions on correctness that were made to allow more room for optimization in the PL/SQL compiler. We would reuse his definition of \textit{freedom} if we were to argue about the correctness of our own interpreter.
 
-Other variants of procedural extension of SQL in other databases share the same kind of compilation and execution options. Transact-SQL \cite{tsqldoc}, which is Microsoft's extension to SQL, provides both an interpreted and a natively compiled mode. Like Oracle databases, the latter improves performance radically, and optimizations are performed for both execution alternatives. PostgreSQL only provides an AST interpreter for its procedural extension, called PL/pgSQL \cite{plpgsqldoc}. However, they started integrating just-in-time compilation into the database for executing SQL queries. Melnik \cite{postgresllvmjit} presented his results using a JIT compiler for LLVM to speed up query execution. Our approach goes in a similar direction, but we execute the procedural code, and do it from a higher-level representation.
+Other variants of procedural extension of SQL in other databases share the same kind of compilation and execution options. Transact-SQL \cite{tsqldoc}, which is Microsoft's extension to SQL, provides both an interpreted and a natively compiled mode. Like Oracle databases, the latter improves performance radically, and optimizations are performed for both execution alternatives. PostgreSQL only provides an AST interpreter for its procedural extension, called PL/pgSQL \cite{plpgsqldoc}. However, they started integrating just-in-time compilation into the database for executing SQL queries. Melnik \cite{postgresllvmjit} presented his results using a JIT compiler for LLVM to speed up query execution. Our approach goes in a similar direction, but we execute procedural programs, and do it from a higher-level representation.
 
 %For these languages and PL/SQL, most of the focus for optimization is on interaction with SQL itself. Tight integration between the two is reinforced, in order to have inexpensive context switching.
 
 Much work has been done in implenting runtime-specialized compilers and interpreters for various languages. The first example is the SELF \cite{self} compiler in 1992. The concept has been reused to improve the performance of modern, dynamically-typed languages, using JIT-technology. One such project is the IonMonkey \cite{jsvalue} JIT compiler for JavaScript, developped at Mozilla, which makes assumptions about argument values of function calls. Most of these projects focus on type specialization, as that is where there is the most room for optimization in dynamically-typed languages. \textit{Type specialization} performs optimizations based on the assumption that the type of an expression is always the same at execution time. Wang \etal{} \cite{rspec} use this technique to reduce the allocation overhead of the R interpreter, by performing boxing elimination with the runtime type information. Many JIT compilers have been implemented for dynamically typed languages to reap the most benefits from type specialization. We can cite Psyco \cite{psyco} for Python, Majic \cite{majic} for MatLab, and the work of Gal \etal{} on JavaScript \cite{gal, gal2}. Our work uses the Truffle framework and runs on the GraalVM, and many of the aforementioned languages have already been implemented using the same combination : Graal.JS \cite{trufflespec} for JavaScript, ZipPy \cite{zippy} for Python, FastR \cite{fastr} for R ...
 
-\todo{Complete this section}
+This work has been done in the context of the Walnut project \cite{walnuthome}. Its goal is to integrate new programming languages into the Oracle database with high execution speed, using the Graal VM and Truffle framework. Their main focus to this day is on the JavaScript language, adding database bindings and interactions on top of the Graal.JS implementation. This is very close to what we present here with PL/SQL. However, there are major differences. First of all, they target a dynamically-typed language, which is not our case. We therefore show that the concept of specialization also has many benefits in a statically-typed context. Furthermore, we can account for the very speficic uses of PL/SQL and its tight integration with SQL and the database, for example in the representations used for various data types. We can then use this information to devise specific optimizations, which is not possible in a generic-purpose language like JavaScript. Finally, our prototype is a proposed replacement for something that already exists in the database. Therefore, it is, and must be, and improvement over the existing system. This is a very different approach than trying to integrate something new into the database, with no reference and no backup to hold on to.
 
 
 %\cleardoublepage
@@ -785,11 +787,11 @@ Truffle also lets the writer of the interpreter use explicit profiling. Profiles
 
 We have already seen, with specialization, that Truffle makes speculative assumptions (well understood by Graal) to improve performance. We present here another use-case, in the partial evaluation of executed ASTs.
 
-Truffle makes the very simple assumption that the shape of the AST is fixed. Although not completely true because it provides support for replacing nodes in the tree on-the-fly, we can see that this is a reasonable assumption. Once the program is parsed and turned into an AST, we can expect it to stay the same during execution. With this very basic assumption, is is possible to reduce interpretive overhead significantly.
+Truffle makes the very simple assumption that the shape of the AST is fixed. Although not completely true because it provides support for replacing nodes in the tree on-the-fly, and that nodes rewrite do occur in the case of specialization, we can see that this is a reasonable assumption once the code has stabilized. Once the program is parsed, turned into an AST, and ran a couple of times (to give it time to stabilize), we can expect it to stay the same during the execution. With this very basic assumption, is is possible to reduce interpretive overhead significantly.
 
-In Object-oriented languages, it is known that virtual calls are the source of many performance issues. This obviously happens here, as node execution is triggered by an abstract \java{execute} method call. However, because the assumption was made that the AST is constant once loaded, Graal can treat every node of the tree as a constant value. This means that is knows the actual type of all the nodes too. Using this information, it can then inline the \java{execute} calls in every parent node, starting from the root, to obtain a single and huge portion of Java code. Optimization on such list of sequential instructions (not containing virtual calls) is rather easy. By itself, this removed the overhead of virtual dispatch when executing the AST.
+In Object-oriented languages, it is known that virtual calls are the source of many performance issues. This obviously happens here, as node execution is triggered by an abstract \java{execute} method call. However, because the assumption was made that the AST is constant once loaded, Graal can treat every node of the tree as a constant value. This means that it knows the actual type of all the nodes too. Using this information, it can then inline the \java{execute} calls in every parent node, starting from the root, to obtain a single and huge portion of Java code that represents the whole guet program. Optimization on such list of sequential instructions (not containing virtual calls) is rather easy. This aggressive inlining alone, is enough to remove the overhead of virtual dispatch when executing the AST.
 
-This kind of optimization can be seen as partial evaluation, in which the actual type of the receiver of a virtual call is the constant value.
+This kind of optimization can be seen as a specific case of partial evaluation, in which the actual type of the receiver object of a virtual call is the constant value.
 
 %We have seen that Truffle, as an API, provides very fine-grained tool support to tailor the performance of their interpreter, by giving more information to the underlying compiler. To pass this information to Graal, Truffle uses very clever mechanics, plus some internally built "communication" between the two.
 %
@@ -803,12 +805,12 @@ This kind of optimization can be seen as partial evaluation, in which the actual
 
 Another major performance issue with this kind of interpreters is the overhead of boxing primitives values.
 
-Because the return type of a node cannot be statically determined, values produced are passed as generic \java{Objects}. When passing primitive values, this means allocating a boxed object for it, then unboxing it at the use location to perform the operation on the value itself. This adds a lot of runtime overhead. On top of that, if a lot of such boxes are allocated, then the execution of the garbage collector can cause slowdowns as well.
+Because the return type of a node cannot be statically determined, values produced are passed as generic \java{Objects}. When passing primitive values, this means allocating a boxed object for it, then unboxing it at the use location to perform the operation on the value itself. The result is then wrapped, yet again, into an \java{Object} box, before being returned to the caller. This adds a lot of runtime overhead. On top of that, if a lot of such boxes are allocated, then repeated execution of the garbage collector can cause massive slowdowns as well.
 
-To solve this issue, primitive values should not be boxed at all. The first way Truffle can avoid these is very simple : add static type information in the Java interpreter's code. To do that, one can add type-specific \java{execute} methods to their hierarchy of nodes. When relevant, the caller can then apply the correct method, and be ensured of the return type. An example of such a use case is shown in Figure \ref{fig:truffleifnode}.
+To solve this issue, primitive values should not be boxed at all. The first way Truffle can avoid these is very simple : add static type information in the Java interpreter's code. To do that, one can add type-specific \java{execute} methods to their hierarchy of nodes. When relevant, the caller can then apply the correct method, and be ensured of the return type, removing the need for a box to be allocated. An example of such a use case is shown in Figure \ref{fig:truffleifnode}. If the called node cannot supply a value of the expected type, then it must throw a specific caught exception, which contains the generic value as an \java{Object}. The caller is then responsible for handling this exception and its value.
 
 
-\begin{figure}[th]
+\begin{figure}[t]
 
 	\begin{subfigure}[h]{\textwidth}
 		\lstinputlisting[style=Java, frame=l]{code/Node.java}
@@ -824,17 +826,16 @@ To solve this issue, primitive values should not be boxed at all. The first way 
 	\label{fig:truffleifnode}
 \end{figure}
 
-If the called node cannot supply a value of the expected type, then it must throw a specific caught exception, which contains the generic value as an \java{Object}. The caller is then responsible for handling this exception and value.
 
-Another way to eliminate boxing is by using an automated way. Graal implements that, by performing an escape analysis phase. The goal of this analysis is to figure out if some value can escape its local context, and be used as a generic object somewhere. If a primitive value is found to escape, the the box must be allocated, otherwise some foreign access could be invalid. Though this optimization can be hard to carry out in the classic AST form, it is much simpler when performed on the completely inlined version of the same tree, as discussed in \ref{sec:partialevaluation}. In this case, the scope for the escape analysis is the Truffle program itself (the whole tree, starting at the root).
+Another way to eliminate boxing is by using an automated way. Graal implements that, by performing an escape analysis phase. The goal of this analysis is to figure out if some value can escape its local context, and be used as a generic object somewhere. If a primitive value is found to escape, then the box must be allocated, otherwise some foreign access could be invalid. If the value is proved to stay local only, then the primitive value can be accessed directly in all use sites, and no box is created. Though this optimization can be hard to carry out in the classic AST form, it is much simpler when performed on the completely inlined version of the same tree, as discussed in \ref{sec:partialevaluation}. In this case, the scope for the escape analysis is the local code block, e.g. loop body or condition branch, or the Truffle program itself (the whole tree, starting at the root).
 
 Using the exact same analysis and concept, it is possible for Graal to avoid the allocation of other objects, not only boxes around primitives types. If a class is instantiated, and the newly created value is found not to escape the local context, then allocation can be avoided. The fields of the object are replaced with local variables, and access to the fields are made directly on these values. In this case, the object is said to be \textit{virtualized}.
 
-Using this, allocation for most of the local values can be eliminated. In fact, most values remain local to the program only, and are never visible outside. Notable exceptions are values used as arguments for function calls in the guest language, and return values of guest language functions.
+With this, allocation for most of the local values can be eliminated. In fact, most values remain local to the program only, and are never visible outside. Notable exceptions are values used as arguments for function calls in the guest language, and return values of guest language functions.
 
 \subsubsection{Example}
 
-We present here a small example of an interpreter's run using Graal and Truffle. We use a language with a single node, presented in Figure \ref{fig:truffleaddnode}, which performs a "+" operator for a dynamically typed language. It performs an addition on numeric inputs, and concatenation for strings. We also consider the very simple program "$a + b + c + d$", whose corresponding AST is shown in Figure \ref{fig:astadd}. We will show that even with simple interpreter code written in a high-level language, it is possible to get the optimal machine code we would expect.
+We present here a small example of an interpreter's run using Graal and Truffle, to explicit the concepts described. We use a language with a single node, presented in Figure \ref{fig:truffleaddnode}, which performs a "+" operator for a dynamically typed language. It performs an addition on numeric inputs, and concatenation for strings. We also consider the very simple program "$a + b + c + d$", whose corresponding AST is shown in Figure \ref{fig:astadd}. We will show that even with simple interpreter code written in a high-level language, it is possible to get close to the optimal machine code we would expect.
 
 \begin{figure}[thb]
 	\centering
@@ -855,7 +856,7 @@ We present here a small example of an interpreter's run using Graal and Truffle.
 
 For the sake of this example, say the values $a$, $b$, $c$ and $d$ are always integer values. In the first run, the nodes 2 and 3 specialize for the integer type, and so does node 1. This means that Truffle now makes the assumption that the inputs will always be of type integer, and only check for this condition.
 
-After a certain number of run, the JIT compiler will trigger. Reusing the assumptions made by Truffle, it will make speculative optimizations on the inputs being of type integer. Only the integer addition code for the nodes need to be compiled. A guard is added to check that the input is indeed of type integer, and a deoptimization point set in the invalidating case.
+After a certain number of run, the JIT compiler will trigger. Reusing the assumptions made by Truffle, it will make speculative optimizations on the inputs being of type integer. Only the integer addition code for the nodes needs to be compiled. A guard is added to check that the input are indeed of type integer, and a deoptimization point set in the invalidating case.
 
 As we said earlier, Truffle also makes the additional assumption that the tree does not change. Once again, using this assumption, the compiler is able to inline the code of the whole tree, starting at the root node. It can now remove the guards in the code for node 1, because the only possible output of nodes 2 and 3 are integer values. Boxes can also be eliminated after escape analysis, and replaced with uses of \java{int} values.
 
@@ -870,7 +871,14 @@ What remains after these optimizations is a code that does the following :
 \item perform addition on primitive integers
 \end{enumerate}
 
-We can see here that the code is not completely as we could expect. Some guards still remain, but need to be for correctness. Because we have no knowledge about the way the values are loaded, they are loaded generically, and need to be unboxed. Note that this could be optimized away, depending on the nodes used to load these values. But the cost of boxing / unboxing is removed for the root node, and arithmetic add operations are performed sequentially without additional checks.
+We can see here that the code is not completely as we could expect. Some guards still remain, but need to be for correctness. Because we have no knowledge about the way the values are loaded, they are loaded generically, and need to be unboxed. Note that this could be optimized away, depending on the nodes used to load these values. But the cost of boxing / unboxing is removed for the root node, and arithmetic add operations are performed sequentially without any additional checks.
+
+\begin{figure}[t]
+	\centering
+	\makebox[\textwidth]{\includegraphics[width=15cm]{./graphs/VisualExample.png}}
+	\caption{The steps taken by the interpreter code before it becomes highly-optimized machine code}
+	\label{fig:visualex}
+\end{figure}
 
 Finally, let us consider the case where, after the code has been compiled in the way described above, some guards become invalid. For this example, we will assume the values suddenly become \java{String} values. In this case, the guards of nodes 2 and 3 are invalidated. This triggers deoptimization, and Truffle must re-specialize the said nodes. From now on, guards for \java{Integer} and \java{String} must be checked. The same then occurs for node 1.
 
@@ -1804,6 +1812,10 @@ Finally, we demonstrated that using speculative optimizations, dynamic compilati
   OpenJDK, Graal project.\newline{}
   \url{http://openjdk.java.net/projects/graal}
   
+\bibitem{walnuthome}
+	Home page of the Walnut project, Oracle Labs.\\
+	\url{https://labs.oracle.com/pls/apex/f?p=labs:49:::::P49_PROJECT_ID:15}
+  
 \bibproceeding{onevmtorulethem}
 	{T. Würtinger, C. Wimmer, A. Wö\ss, L. Stadler, G. Duboscq, C. Humer, G. Richards, D. Simon, M. Wolczko}
 	{One VM to rule them all}
@@ -1928,6 +1940,12 @@ Finally, we demonstrated that using speculative optimizations, dynamic compilati
 	{Just-in-time value specialization}
 	{Proceedings of the 2013 IEEE/ACM International Symposium on Code Generation and Optimization}
 	{Feb. 2013}
+	
+\bibitem{self}
+	Craig Chambers.
+	The Design and Implementation of the Self Compiler, an  Optimizing  Compiler  for  Object-Oriented  Programming  Languages.
+	PhD thesis, Computer Science Departement, Stanford University.
+	March 1992.
 
 \end{thebibliography}
 \addcontentsline{toc}{section}{\nameref{sec:references}}
