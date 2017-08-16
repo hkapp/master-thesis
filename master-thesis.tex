@@ -862,11 +862,15 @@ As we said earlier, Truffle also makes the additional assumption that the tree d
 
 What remains after these optimizations is a code that does the following :
 \begin{enumerate}
+\itemsep0em
 \item load the values for $a$, $b$, $c$ and $d$
 \item check that they are of type \java{Integer}
 	\begin{itemize}
+	\vspace{-1mm}
+	\itemsep0em
 	\item if not, deoptimize
 	\end{itemize}
+	\vspace{-1mm}
 \item unbox the values
 \item perform addition on primitive integers
 \end{enumerate}
