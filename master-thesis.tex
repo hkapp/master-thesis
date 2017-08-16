@@ -274,7 +274,7 @@ Databases today are a central part of any application. They are used to store in
 Query languages, like SQL, provide a very efficient way of fetching and modifying data. However, their limited expressiveness restricts the set of processing tasks that can be performed efficiently. To lift this restriction, procedural languages also running inside the database are usually added to allow for more flexibility. Performance of these languages is critical because of the mass of data they handle, but the fact that they are full-fledged programming languages, with much more generality than querying languages, makes optimization much harder. Furthermore, frequent communications between the two kinds of languages incurs, on top of context switching overhead, a mismatch in data representation : space-optimized values provided by the database are typically not efficient when it comes to performing generic-purpse computation.
 %and the need for computation efficient representations by the procedural languages makes the task of improving performance even harder.
 
-In this project, we look at the Oracle database and its embedded procedural language called PL/SQL, and try to improve its performance. We do so by using the latest \textit{Just-In-Time} compilation technology, code specialization, and runtime data representation specialization. This is done by implementing an efficient AST interpreter using the Truffle language framework, a rich API to write self-specializing interpreters. PL/SQL programs are then run on top of the Graal VM, a high-performance implementation of the Java Virtual Machine that aims at bringing more languages to the JVM. It uses aggressive speculative optimizations to execute Java programs at high speed, enabling foreign languages implementation using the Truffle framework to benefit directly from these optimizations. Truffle and Graal are two open-source projects, actively developped at Oracle Labs. We tackle the specific problem of having data representations not suited for computation by performing runtime data representation specialization. This allows us to use multiple value representations for the same data type, and choose the best fit for the current program at runtime.
+In this project, we look at the Oracle database and its embedded procedural language called PL/SQL, and try to improve its performance. We do so by using the latest \textit{Just-In-Time} compilation technology, code specialization, and runtime data representation specialization. This is done by implementing an efficient AST interpreter using the Truffle language framework, a rich API to write self-specializing interpreters. PL/SQL programs are then run on top of the Graal VM, a new JIT compiler for Java bytecode that aims at bringing more languages to the JVM. It uses aggressive speculative optimizations to execute programs at high speed, and enables foreign languages implemented using the Truffle framework to benefit directly from these optimizations. Truffle and Graal are two open-source projects, actively developped at Oracle Labs. We tackle the specific problem of having data representations not suited for computation by performing runtime data representation specialization. This allows us to use multiple value representations for the same data type, and choose the best fit for the current program at runtime.
 %We use the speculative optimizations provided by the Graal compiler, as well as code specialization framework of Truffle, two projects developped at Oracle Labs, to implement an efficient PL/SQL interpreter. 
 
 This thesis will answer the following questions :
@@ -591,7 +591,7 @@ In this project, we will try to improve performance over native compilation. We 
 %\cleardoublepage
 \startsection{The Graal / Truffle ecosystem}
 
-This section gives insight into the environment used for this project, comprised of the Truffle framework and the Graal VM.
+This section gives insight into the environment used for this project, comprised of the Truffle framework and Graal VM.
 
 \subsection{The Graal VM}
 
@@ -605,15 +605,21 @@ This section gives insight into the environment used for this project, comprised
 
 %\subsubsection{What is the Graal VM ?}
 
+\subsubsection{A new JIT compiler for Java bytecode}
+
 The GraalVM is an open-source project developped at Oracle Labs \cite{graalpage}. It is a high-performance Java Virtual Machine, using a very aggressive optimizing compiler, based on speculative runtime optimizations.
 
 %It has been built with many goals in mind, more than being "just a new JVM".
 
-This project is entirely written in Java. This is rather uncommon for Virtual Machines, typically written in low-level languages like C. However, this means that the VM code can itself take advantage of runtime compilation and optimizations, as Graal is then dynamically compiled by the underlying JVM. In some instances, Graal can even compile its own code, and benefit from its own optimizations. To reduce the warmup time of the VM, some of its code is directly compiled when launching the VM.
+Graal itself is a new compiler for Java bytecode. It is intended not only for Java programs, but for any programming language that targets this intermediate representation. The Graal VM is a complete Java Virtual Machine, that uses Graal as (one of) the JIT compilers. In GraalVM, the underlying virtual machine is the Hotspot JVM, but it is important to note that the Graal compiler is completely decoupled for its host VM. It complies with the JVMCI API (\textit{Java Virtual Machine Compiler Interface}), but assumes nothing about the virtual machine actually running the code. This allows the compiler to be used in various setups, which will prove useful when we talk about the SubstrateVM.
+
+The compiler is entirely written in Java. This means that, when the JIT is triggered for the original program, the host JVM will interpret Graal's code. After some time, this code will get 'hot' as well, and be compiled dynamically. This compilation can either be done by Graal itself or by another dynamic compiler residing inside this virtual machine.
+
+%The compiler is entirely written in Java. This means that the VM code can itself take advantage of runtime compilation and optimizations, as Graal is then dynamically compiled by the underlying JVM. In some instances, Graal can even compile its own code, and benefit from its own optimizations. To reduce the warmup time of the VM, some of its code is directly compiled when launching the VM.
 
 %This means that any Java programmer can directly and simply access the compiler's interface. On top of that, this means that the VM can itself take advantage of runtime optimizations : Graal's code will be compiled at runtime by the underlying JVM. Graal even compiles some of its own code, which benefits from all its very aggressive optimizations. To reduce startup time of the VM, some of its code is directly compiled when launching the VM.
 
-The major goal of the GraalVM is to provide very high-performance to high-level languages targetting the JVM, using speculative optimizations. To perform these optimizations, it uses its own GraalIR \cite{graalir, graalspecoptir}. This intermediate representation is graph-based, in SSA-form, and represents both control-flow constraints and data constraints. Nodes are only bound by their required constraints, meaning that some nodes may not have any control-flow constraint until scheduling occurs. This representation of the program makes the writing of optimizations much simpler than would be on a more classical IR.
+The major goal of the GraalVM is to provide very high-performance to high-level languages targeting the JVM, using speculative optimizations. To perform these optimizations, it uses its own GraalIR \cite{graalir, graalspecoptir}. This intermediate representation is graph-based, in SSA-form, and represents both control-flow constraints and data constraints. Nodes are only bound by their required constraints, meaning that some nodes may not have any control-flow constraint until scheduling occurs. This representation of the program makes the writing of optimizations much simpler than would be on a more classical IR.
 
 % Some nodes of this graph can then be "floating", i.e. without any control-flow constraints, until scheduling occurs.
 %This intermediate representation has been designed to facilitate the writing of optimizations.
@@ -629,9 +635,10 @@ Using this information, the compiler only produces code for the likely branch. T
 
 The unlikely branch is not compiled, but instead replaced with a \textit{deoptimization point}. If such a point is reached during the execution of the compiled code, the execution must exit the compiled code, and continue running in the interpreter instead. For this to work, additional information must be stored in the compiled code to reflect the state of the interpreter at the deoptimization points. This information is later retrieved, and the interpreter can safely be started back from this point. The memory overhead of this technique has been looked at in \cite{graaldatacompression}.
 
-It is easy to see that reaching a deoptimization point is very expensive, because it means switching execution context, and continue running the rest of the code in the interpreter, which is very slow. Therefore, once deoptimization occured somewhere, the compiler will typically compile the unlikely branch too, to ensure no deoptimization happens again.
+Reaching a deoptimization point is expensive, because it means switching execution context, and continue running the rest of the code in the interpreter. Therefore, once deoptimization occurred, the compiler will typically re-compile with the branch that caused the deoptimization, to ensure it doesn't happens again.
 
-The condition for deoptimization is called a \textit{guard}. It is handled like normal code in the IR, and thus can me moved in the program by the scheduler. They are typically moved out of loops, and checked as soon as possible in the resulting compiled code. This makes the compiled code as fast as possible, by bothering it with checking guards only when and where it is totally necessary.
+The condition for deoptimization is called a \textit{guard}. It is handled like normal code in the IR, and thus can me moved in the program by the scheduler. They are typically moved out of loops, and checked as early as possible in the resulting compiled code, in order to minimize the impact of guards on performance.
+%This makes the compiled code as fast as possible, by bothering it with checking guards only when and where it is totally necessary.
 
 %Using speculative optimizations means that some optimistic assumptions made when producing the code will turn out to be wrong, sooner or later. This is why speculative compilers need to keep track of some information about the state of the interpreter, in the case of a deoptimization (i.e. when an assumption is found to be wrong). In fact, when runtime values break the assumptions made, the compiled code must continue in the interpreter. But the continued execution must not perform twice the same operation. That is why such compilers must store information about the state of the interpreter, in the compiled code or linked to the compiled code. Such overhead can be significant.
 
@@ -653,7 +660,8 @@ The condition for deoptimization is called a \textit{guard}. It is handled like 
 
 \subsubsection{A multi-lingual platform}
 
-Another goal for this project is to provide an efficient multi-lingual (or polyglot) platform. The idea is to effortlessly be able to run multiple programming languages on the same virtual machine. This means cheap interoperability, because they all run in the same environment. This also allows every supported language to benefit from very complex optimizations, which would otherwise need to be re-implemented for every language.
+Another goal for this project is to provide an efficient multi-lingual (or polyglot) platform. The idea is to share as much as possible the engineering intensive part of a virtual machine implementation across languages, in particular, the dynamic compiler that is crucial to performance.  Sharing the same runtime environment and dynamic compiler also make interoperability between languages easier  and more efficient. 
+%The idea is to effortlessly be able to run multiple programming languages on the same virtual machine. This means cheap interoperability, because they all run in the same environment. This also allows every supported language to benefit from very complex optimizations, which would otherwise need to be re-implemented for every language.
 
 To solve that open problem, the Graal team decided to bring all the languages to the JVM, while providing a simple way to integrate or re-implement the desired languages : the Truffle Framework. Efforts have also been made in order for the optimizations of Graal to take into account the fact that not all languages executed are necessarily Java at their core, and could use very different patterns.
 
@@ -678,7 +686,7 @@ We give in this section an overview of the features Truffle provides, focusing o
 
 %To bridge that performance gap, 
 
-%To do that, programmers must first re-implement the language's operators and semantics, in order to execute input programs of the \textit{guest language}. The guest language is the foreign language, not natively targetting the JVM, which is run by the Truffle engine.
+%To do that, programmers must first re-implement the language's operators and semantics, in order to execute input programs of the \textit{guest language}. The guest language is the foreign language, not natively targeting the JVM, which is run by the Truffle engine.
 
 %The Truffle framework is an open source project from Oracle Labs \cite{trufflerepo}, developped hand-in-hand with the GraalVM project. Its goal is to allow language designers or compiler / interpreter writers to get the same performance for some language implementation as a modern optimizer compiler machine code could produce, by only writing an AST interpreter. It does this by providing developpers with a simple API, in Java, to describe the said AST. The interpreter itself then runs on the GraalVM, another project launched at Oracle Labs, and has many optimizations very specifically targetted towards this VM.
 
@@ -791,7 +799,7 @@ Truffle makes the very simple assumption that the shape of the AST is fixed. Alt
 
 In Object-oriented languages, it is known that virtual calls are the source of many performance issues. This obviously happens here, as node execution is triggered by an abstract \java{execute} method call. However, because the assumption was made that the AST is constant once loaded, Graal can treat every node of the tree as a constant value. This means that it knows the actual type of all the nodes too. Using this information, it can then inline the \java{execute} calls in every parent node, starting from the root, to obtain a single and huge portion of Java code that represents the whole guet program. Optimization on such list of sequential instructions (not containing virtual calls) is rather easy. This aggressive inlining alone, is enough to remove the overhead of virtual dispatch when executing the AST.
 
-This kind of optimization can be seen as a specific case of partial evaluation, in which the actual type of the receiver object of a virtual call is the constant value.
+This kind of optimization can be seen as a specific case of partial evaluation, in which the actual type of the receiver object of a virtual call is the constant value. That is why this very aggressive inlining process occurrs during the partial evaluation phase of the Graal compiler. In the general case, one would like to avoid inlining all of these functions, as that creates massive, monolithical fragments with duplicate code. However, this optimization is crucial to the performance of Truffle. For this reason, it is triggered only when compiling Truffle ASTs (other programs still benefit from regular inlining).
 
 %We have seen that Truffle, as an API, provides very fine-grained tool support to tailor the performance of their interpreter, by giving more information to the underlying compiler. To pass this information to Graal, Truffle uses very clever mechanics, plus some internally built "communication" between the two.
 %
@@ -831,7 +839,7 @@ Another way to eliminate boxing is by using an automated way. Graal implements t
 
 Using the exact same analysis and concept, it is possible for Graal to avoid the allocation of other objects, not only boxes around primitives types. If a class is instantiated, and the newly created value is found not to escape the local context, then allocation can be avoided. The fields of the object are replaced with local variables, and access to the fields are made directly on these values. In this case, the object is said to be \textit{virtualized}.
 
-With this, allocation for most of the local values can be eliminated. In fact, most values remain local to the program only, and are never visible outside. Notable exceptions are values used as arguments for function calls in the guest language, and return values of guest language functions.
+With this, allocation for most of the local values can be eliminated. In fact, most values remain local to the program only, and are never visible outside. Notable exceptions are values used as arguments for function calls in the guest language, return values of guest language functions, and values stored in another objects' field.
 
 \subsubsection{Example}
 
