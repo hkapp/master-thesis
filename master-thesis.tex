@@ -976,7 +976,7 @@ Because SVM is compiled natively to machine code, and is not bound by the restri
 
 SubstrateVM provides a DSL to declare the C structures used in the Java code, which are then used as Java \java{interface}s. When compiling the image, the Java access methods are replaced with direct memory accesses into the C data structures. This \java{interface}-based mechanism allows the Java code to be clear, type safe, and valid for compilation by any Java compiler.
 
-The DSL also provides mechanisms for function calls, to and from C. Java methods to be called from C should be \java{static}, and never called inside the Java codebase. Some annotations must then be added to its declaration to make it accessible. The function can then be called in C using function pointers. Java code can also call C functions easily, by providing the name of the target entity. These calls are then resolved when linking the image.
+The DSL also provides mechanisms for function calls, to and from C. Java methods to be called from C should be \java{static}, and never called inside the Java codebase. Some annotations must then be added to its declaration to make it accessible. The function can then be called in C using function pointers. Java code can also call C functions easily, by providing the name of the target entity. These calls are resolved when linking the image.
 
 %For type safety in the Java code, the C structures used must be "re-declared" in Java, using DSL based on annotations that SVM provides. C structures can then used as Java \java{interface}s, and these accesses are replaced with direct structure access during image compilation.
 
@@ -1023,7 +1023,7 @@ For this system to work, every type in the guest language (PL/SQL in this case) 
 
 We would like to use Java primitives types when possible for such mappings. \simpleint{} naturally maps to \java{int}, but \plsi{} cannot map to the same Java type. Being a nulleable type, values of the type \plsi{} need additional information to represent the possibility of a value being \plsnull{}. A simple solution is to create a class for this type, comprised of a 32-bit integer value and a flag for \plsnull{}.
 
-However, this solution incurs a lot of overhead on boxing and unboxing. For operations on non-null values, the integer value is unboxed, the operation is performed, and the result is the boxed again in a new object. For null values, the flag must be checked, but no object needs to be allocated : the null value found can be reused. We expect values to be non-null most of the time, which has the highest cost.
+However, this solution incurs a lot of overhead on boxing and unboxing, and increases memory consumption. For operations on non-null values, the integer value is unboxed, the operation is performed, and the result is the boxed again in a new object. For null values, the flag must be checked, but no object needs to be allocated : the null value found can be reused. We expect values to be non-null most of the time, which has the highest cost. Note that Graal should be able to virtualize most of these object allocations. This would make us very reliant on Graal correctly performing its escape analysis, and suffer a heavy cost when some value appears to escape.
 
 \subsection{\plsi{} and \plsnull{} handling}
 
@@ -1047,13 +1047,20 @@ However, this solution incurs a lot of overhead on boxing and unboxing. For oper
 
 To alleviate this problem, we would like to be able to use primitive \java{int} values to represent non-null \plsi{} values, and a specific \plsnull{} value otherwise. However, this cannot work in the system described. Because the operators choose semantics using the input Java type, they cannot differentiate between \plsi{} and \simpleint{}, which have different semantics on overflow (the first raises an exception while the other does nothing). This is the typical implementation of dynamic languages in Truffle, where the input type defines the semantics used.
 
-We use the fact that PL/SQL is a statically-typed language to fix these issues. Using type information from PL/SQL, we build a statically-typed AST. Every node can only handle values of their fixed type. We can then safely map PL/SQL types to multiple Java types. This will be the basis for data representation specialization.
+We use the fact that PL/SQL is a statically-typed language to fix these issues. Using type information from PL/SQL, we build a statically-typed AST. Every node can only handle values of their fixed type. We can then safely map different PL/SQL types to the same Java type. In this system, we can also use different Java representations for the same PL/SQL type. This will be the basis for data representation specialization.
+
+\begin{figure}[p]
+	\centering
+	\includegraphics[scale=0.8]{./graphs/TypedNodeExample.png}
+	\caption{Statically-typed AST nodes for addition}
+	\label{fig:typednodeexample}
+\end{figure}
 
 Both non-null values for \plsi{} and \simpleint{} use the primitive integer type. Further, we add a specific type to represent the \plsnull{} value, implemented as a singleton. Specializations in the operation nodes can now be performed on primitives types when possible, reducing the stress for escape analysis and boxing elimination.
 
-\begin{figure}[t]
+\begin{figure}[p]
 	\lstinputlisting[style=Java, frame=l]{code/PlsIntegerAdd.java}
-	\caption{Statically-typed add node for \plsi{} values}
+	\caption{Code of a statically-typed add node for \plsi{} values}
 	\label{fig:plsiadd}
 \end{figure}
 
