@@ -271,10 +271,10 @@ Finally, I want to show all my gratitude to my parents, who helped me get throug
 
 Databases today are a central part of any application. They are used to store information about customers, transactions, identifiers and passwords, and much more. With large and cheap memory storage, and a widespread access to the Internet, these tables typically hold millions of records. It is therefore crucial that getting access to this data and performing simple processing steps is as efficient as possible.% Simple processing tasks, like validation and conversions of input values, or expansion of missing records should also be done inside the database.
 
-Query languages, like SQL, provide a very efficient way of fetching and modifying data. However, their limited expressiveness restricts the set of processing tasks that can be performed efficiently. To lift this restriction, procedural languages also running inside the database are usually added to allow for more flexibility. Performance of these languages is critical because of the mass of data they handle, but the fact that they are full-fledged programming languages, with much more generality than querying languages, makes optimization much harder. Furthermore, frequent communications between the two kinds of languages incurs, on top of context switching overhead, a mismatch in data representation : space-optimized values provided by the database are typically not efficient when it comes to performing generic-purpse computation.
+Query languages, like SQL, provide a very efficient way of fetching and modifying data. However, their limited expressiveness restricts the set of processing tasks that can be performed efficiently. To lift this restriction, procedural languages also running inside the database are usually added to allow for more flexibility, and to reduce the amount of communication between the database and its clients. Until recently, performance of these languages were not the main bottleneck. Now that databases start to fit in main-memory, their performance is becoming critical. However, the fact that they are full-fledged programming languages, with much more generality than querying languages, makes optimization much harder. Furthermore, frequent communications between the two kinds of languages incurs, on top of context switching overhead, a mismatch in data representation : space-optimized values provided by the database are typically not efficient when it comes to performing generic-purpse computation.
 %and the need for computation efficient representations by the procedural languages makes the task of improving performance even harder.
 
-In this project, we look at the Oracle database and its embedded procedural language called PL/SQL, and try to improve its performance. We do so by using the latest \textit{Just-In-Time} compilation technology, code specialization, and runtime data representation specialization. This is done by implementing an efficient AST interpreter using the Truffle language framework, a rich API to write self-specializing interpreters. PL/SQL programs are then run on top of the Graal VM, a new JIT compiler for Java bytecode that aims at bringing more languages to the JVM. It uses aggressive speculative optimizations to execute programs at high speed, and enables foreign languages implemented using the Truffle framework to benefit directly from these optimizations. Truffle and Graal are two open-source projects, actively developped at Oracle Labs. We tackle the specific problem of having data representations not suited for computation by performing runtime data representation specialization. This allows us to use multiple value representations for the same data type, and choose the best fit for the current program at runtime.
+In this project, we look at the Oracle database and its embedded procedural language called PL/SQL, and try to improve its performance. We do so by using the latest \textit{Just-In-Time} compilation technology, code specialization, and runtime data representation specialization. This is done by implementing an efficient AST interpreter using the Truffle language framework, a rich API to write self-specializing interpreters. PL/SQL programs are then run on top of the Graal VM, which uses a new JIT compiler for Java bytecode that aims at bringing more languages to the JVM. It uses aggressive speculative optimizations to execute programs at high speed, and enables foreign languages implemented using the Truffle framework to benefit directly from these optimizations. Truffle and Graal are two open-source projects, actively developped at Oracle Labs. We tackle the specific problem of having data representations not suited for computation by performing runtime data representation specialization. This allows us to use multiple value representations for the same data type, and choose the best fit for the current program at runtime.
 %We use the speculative optimizations provided by the Graal compiler, as well as code specialization framework of Truffle, two projects developped at Oracle Labs, to implement an efficient PL/SQL interpreter. 
 
 This thesis will answer the following questions :
@@ -549,7 +549,7 @@ To fully support the type system of SQL, PL/SQL must also handle the \plsnull{} 
 
 In addition to representing the absence of value, or unknown value as it is also referred to in the documentation, \plsnull{} also has a complete set of semantics. This is different from most programming language, which typically raise an exception when an operation is performed on an unknown value. In PL/SQL, all operators must be able to handle this value without raising an exception, and define a safe return value. In most cases, the operator returns the \plsnull{} value when one of its operands is \plsnull{}.
 
-But this value does not only encode the unknown value. For the \varchar{} type, an empty string is also considered null. This is due to long-lasting implementation decisions, and must be accounted for. The semantics for such values are even more specific, as some operators treat it as an empty string, but others treat it as \plsnull{}.
+But this value does not only encode the unknown value. For the \varchar{} type, an empty string is also considered null. This is due to long-lasting implementation decisions, and must be accounted for. The semantics for such values are even more specific, as some operators treat it as an empty string, but others treat it as \plsnull{}. For example, \pls{CONCAT('a','') = 'a'}, but \pls{LENGTH('') = NULL}.
 
 \subsection{Compilation process}
 \label{sec:plscompilation}
@@ -918,8 +918,7 @@ Although the GraalVM does provide very good performance to Java and foreign lang
 
 To be able to integrate the Graal compiler and the languages implemented with Truffle that run on top of it, the Graal team implemented a new way to execute them : the SubstrateVM (abbreviated SVM). The Substrate VM is a very thin virtual machine that provides the necessary services to run Truffle interpreters. It provides a garbage collector, thread support, and works with most of the JDK library. Its main goal is embeddability, so it should have a very low warmup time and a small memory footprint.
 
-Because SVM is not a JVM, it does not provide some low-level functionalities. First, there is no bytecode, so no bytecode interpreter. Some additional low-level calls cannot be done : this includes reflection, runtime class-loading, direct VM calls ...
-$\rightarrow$ subset of java
+To be embeddable, the SubstrateVM should be self-contained, which means that runtime class-loading is not possible. Further, the SVM is not a JVM, and does not behave like one. Thus, some low-level calls or virtual machine specific knwoledge cannot be used here, like reflection for example. These restrictions form a subset of the Java language, feasible for SVM integration. Sources to be deployed on SVM, as well as any reachable code, must be written in this subset and comply to the restrictions.
 
 \subsubsection{A pre-compiled VM}
 
@@ -934,54 +933,62 @@ To solve this issue, the SVM is built as an already compiled entity. This way, t
 
 The Substrate VM is also implemented in Java. To build a pre-compiled image, multiple steps are required. First, the relevant sections of code must be found. This include SVM and Graal's code, on top of the desired Truffle interpreters, and any library these may use. This is done by performing static reachability analysis, starting from these pre-defined components. The analysis is performed by Graal, which has dedicated modules for static analysis. Once these classes and methods are found, they will be the only ones available in the image. This is due to the requirement of SVM being thin and slef-contained, and removes the burden of checking for and loading missing classes at runtime.
 
-After that, the code is compiled ahead-of-time using Graal. As we said earlier, Graal is not bound to be a JIT compiler in a specific VM, and can be used in many contexts. This is one of them, where it is used as an ahead-of-time Java bytecode to machine code interpreter.
+After that, the code is compiled ahead-of-time using Graal. As we said earlier, Graal is not bound to be a JIT compiler in a specific VM, and can be used in many contexts. This is one of them, where it is used as an ahead-of-time Java bytecode to machine code compiler. The resulting image is rather small, as it contains only the necessary parts of the code, with a size between 200 and 250 Mb for the PL/SQL images we built.
 
 %The idea of the SubstrateVM (SVM for short) is to create a pre-compiled image of the GraalVM. This image should be self-contained, i.e. not requiring loading any other classes at runtime. The goal is to reach peak performance faster, by spending all the time executing the guest program, and not compiling the VM.
 
 %Static analysis must be performed to know which code to embed in the compiled image. SVM must act as a JVM when running, so it has its own garbage collector. The code is compiled using the Graal compiler itself, but can only perform static optimizations (although specific care is taken when compiling Graal's own code).
 
-The guest program, because it is represented as an AST in memory and loaded at runtime, can only be compiled dynamically. As we showed earlier, this is desirable to benefit from speculative assumptions. The compilation time overhead can be reduced greatly by performing compilation on a separate thread.
+The guest program, because it is represented as an AST in memory and loaded at runtime, can only be compiled dynamically. As we showed earlier, this is desirable to benefit from speculative assumptions. This means that runtime compilation can still occur in the SubstrateVM, but it is limited to Truffle programs. To be able to do this, the image must carry specific information about the code that is susceptible to just-in-time compilation. This includes the code of the interpreter's nodes themselves, but also the parts of the Truffle API used by the latter, and generally any code reachable from the AST nodes. It is possible to restrict this set, by 'hiding' some code behind specific Truffle boundaries, provided by the DSL. This can avoid loading massive portions of code from external libraries, which may not benefit a lot from dynamic compilation. Because the complete environment is statically-compiled, warmup times for the guest program are typically very short. The compilation time overhead can be reduced by performing compilation on a separate thread.
 
-
-
-\subsubsection{The problem of warmup}
-
-Despite its advantages, the Graal VM can have problems with warmup times. Because it is written in Java, and runs on another JVM, multiple layers of JIT compilation and warmup must occur before optimal performance is reached :
-\begin{enumerate}
-\item the underlying JVM must get to warmup, and start compiling Graal's code
-\item Graal itself must warm up, and start compiling the interpreter code
-\item the nodes of the AST interpreter must stabilize for the inputs seen, and stop any deoptimization : this is the optimal code
-\end{enumerate}
+%\subsubsection{The problem of warmup}
+%
+%Despite its advantages, the Graal VM can have problems with warmup times. Because it is written in Java, and runs on another JVM, multiple layers of JIT compilation and warmup must occur before optimal performance is reached :
+%\begin{enumerate}
+%\item the underlying JVM must get to warmup, and start compiling Graal's code
+%\item Graal itself must warm up, and start compiling the interpreter code
+%\item the nodes of the AST interpreter must stabilize for the inputs seen, and stop any deoptimization : this is the optimal code
+%\end{enumerate}
 
 %Note that this does not incur a cost if the execution was taking place in the interpreter, because no time has been spent (and wasted) in compilation of this later discarded code. Due to this time required for the nodes to stabilize, the JIT compiler should wait for a fair amount of time before deeming some code as "hot", to avoid wasteful compilations. However, once the code has been compiled and run a lot of times, it is still possible that some unexpected input appears and requires re-specialization of some node(s). After that point, compilation should be very fast.
 
-The third point here is very important for the tuning of Graal. While specializing, the guest program AST will need to invalidate the currently compiled code. Truffle provides some measurement of stability of the tree to avoid such deoptimizations, but cannot be guaranteed to never occur later. On top of that, this means waiting a fair amount of time for very simple programs before the code gets compiled.
+%The third point here is very important for the tuning of Graal. While specializing, the guest program AST will need to invalidate the currently compiled code. Truffle provides some measurement of stability of the tree to avoid such deoptimizations, but cannot be guaranteed to never occur later. On top of that, this means waiting a fair amount of time for very simple programs before the code gets compiled.
 
 %Unfortunately, this problem is hard to solve, and leads to long warmup times for programs running on the Truffle/Graal engine. The goal being to reach peak performance as soon as possible to reap the most benefits, this approach is not suitable. That is why the Graal team created a new way to use their VM, with lower memory footprint (running two JVM inside another requires a lot of memory) and faster warmup times. This is the tool of choice for embedded integration and benchmarking, and is called SVM.
 
-\subsubsection{The SubstraveVM}
-
-The idea of the SubstrateVM (SVM for short) is to create a pre-compiled image of the GraalVM. This image should be self-contained, i.e. not requiring loading any other classes at runtime. The goal is to reach peak performance faster, by spending all the time executing the guest program, and not compiling the VM.
-
-Static analysis must be performed to know which code to embed in the compiled image. SVM must act as a JVM when running, so it has its own garbage collector. The code is compiled using the Graal compiler itself, but can only perform static optimizations (although specific care is taken when compiling Graal's own code).
-
-The guest program, because it is represented as an AST in memory and loaded at runtime, can only be compiled dynamically. As we showed earlier, this is desirable to benefit from speculative assumptions. The compilation time overhead can be reduced greatly by performing compilation on a separate thread.
+%\subsubsection{The SubstraveVM}
+%
+%The idea of the SubstrateVM (SVM for short) is to create a pre-compiled image of the GraalVM. This image should be self-contained, i.e. not requiring loading any other classes at runtime. The goal is to reach peak performance faster, by spending all the time executing the guest program, and not compiling the VM.
+%
+%Static analysis must be performed to know which code to embed in the compiled image. SVM must act as a JVM when running, so it has its own garbage collector. The code is compiled using the Graal compiler itself, but can only perform static optimizations (although specific care is taken when compiling Graal's own code).
+%
+%The guest program, because it is represented as an AST in memory and loaded at runtime, can only be compiled dynamically. As we showed earlier, this is desirable to benefit from speculative assumptions. The compilation time overhead can be reduced greatly by performing compilation on a separate thread.
 
 %Due to the heavy-weight static analysis and optimizations that must be performed, generation of the SVM image is rather slow. However, it is built to provide very good runtime performances, so time lost in building the image will eventually be compensated by the improved running time. On top of that, the SubstrateVM has been designed for very specific purposes which do not take into account the compilation time (integration and performance measurement for example).
 
 \subsubsection{Direct C access}
 
-On top of being faster, and with a lower memory footprint, the SubstrateVM provides a few additional tools. The most important of these is a very efficient access to C structures and code.
+Easy and efficient manipulation of native C types and data structures is key to embedding languages in complex host systems. The Java virtual machine provides an interface that can be used to interact with external code and values, namely JNI (for \textit{Java Native Interface}). This solution is hard to use in practice, as writing such code is cumbersome and has poor performances. The SubstrateVM offers specific abstractions to ease the interactions between Java and C code, and does so in a lightweight fashion.
 
-Because the SVM is an entity of its own, it is not bound by the JVM's limitations like Graal is. Indeed, Graal VM being run in another Java virtual machine, it cannot easily make very low-level calls or accesses to the memory, and is bound to the memory-safe environment of Java. The SVM, as it is compiled directly to machine code, lifts these restrictions, and permits direct access to memory. 
+%On top of being faster, and with a lower memory footprint, the SubstrateVM provides a few additional tools. The most important of these is a very efficient access to C structures and code.
 
-The Substrate VM allows fast interfacing with external C code and structures. All the C structures, types and methods are available directly. No conversions are performed between Java and C primitive types. For type safety in the Java code, the C structures used must be "re-declared" in the Java code, using another DSL based on annotations. After that, all calls and structure access, as well as pointers arithmetics are available. Note that this works both ways, and allows the C code to call Java functions as well, through C function pointers.
+Because SVM is compiled natively to machine code, and is not bound by the restrictions of a JVM, it is possible to make easy and very efficient direct memory accesses. The Substrate VM uses this to provide fast interfacing with external C code and structures. It supports the C primitive types without any conversions in Java, as well as pointer arithmetics. It allows C data structure access and function calls to and from C.
 
-This is very useful when interacting with lower-level APIs, and allows fast and efficient interoperability. We use these functionalities in the project to get direct access to the values provided by the database, without requiring a copy into the Java heap as would otherwise be necessary to access anything.
+SubstrateVM provides a DSL to declare the C structures used in the Java code, which are then used as Java \java{interface}s. When compiling the image, the Java access methods are replaced with direct memory accesses into the C data structures. This \java{interface}-based mechanism allows the Java code to be clear, type safe, and valid for compilation by any Java compiler.
+
+The DSL also provides mechanisms for function calls, to and from C. Java methods to be called from C should be \java{static}, and never called inside the Java codebase. Some annotations must then be added to its declaration to make it accessible. The function can then be called in C using function pointers. Java code can also call C functions easily, by providing the name of the target entity. These calls are then resolved when linking the image.
+
+%For type safety in the Java code, the C structures used must be "re-declared" in Java, using DSL based on annotations that SVM provides. C structures can then used as Java \java{interface}s, and these accesses are replaced with direct structure access during image compilation.
+
+%Because the SVM is an entity of its own, it is not bound by the JVM's limitations like Graal is. Indeed, Graal VM being run in another Java virtual machine, it cannot easily make very low-level calls or accesses to the memory, and is bound to the memory-safe environment of Java. The SVM, as it is compiled directly to machine code, lifts these restrictions, and permits direct access to memory. 
+
+%All the C structures, types and methods can be accessed directly form Java. No conversions are performed between Java and C primitive types. For type safety in the Java code, the C structures used must be "re-declared" in the Java code, using another DSL based on annotations. After that, all calls and structure access, as well as pointers arithmetics are available. Note that this works both ways, and allows the C code to call Java functions as well, through C function pointers.
+
+This is very useful when interacting with lower-level APIs, and allows fast and efficient interoperability. We use these functionalities in the project to get direct access to the values provided by the database, without requiring a copy into the Java heap.
 
 %\cleardoublepage
 \startsection{Implementing a subset of PL/SQL using Truffle}
-\thispagestyle{plain}
+%\thispagestyle{plain}
 
 We describe here our approach for implementing a subset of PL/SQL using Truffle. It uses all the tools provided by the framework to achieve high-performance. It also exploits the static typing of PL/SQL to implement improvements based on data representation specialization.
 
