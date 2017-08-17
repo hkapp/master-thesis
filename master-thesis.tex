@@ -1205,7 +1205,7 @@ Because PL/SQL programs are rather short, the lifespan of \varchar{} values is s
 
 %If built and stored inside a database table, the value itself could live for a long time, but it would not be part of the program environment. Another typical use of \varchar{} variables is for string building, typically in a loop.
 
-While these use cases are very different, we have more precise knowledge at the granularity of operations. After running analysis on more than 3500 typical PL/SQL programs, data shows that the concatenation operator is the most used, by far. It represents 76\% of all \varchar{} operation uses. If we seek to provide a high-performance implementation of this type, it is clear that we must support a very efficient concatenation operator.
+While these use cases are very different, we have more precise knowledge at the granularity of operations. After running analysis on more than 3500 typical PL/SQL programs found in already-existing database files, data shows that the concatenation operator is the most used, by far. It represents 76\% of all \varchar{} operation uses. If we seek to provide a high-performance implementation of this type, it is clear that we must support a very efficient concatenation operator.
 
 \subsection{Classic string implementations}
 
@@ -1229,6 +1229,13 @@ The simplest implementation for a string type is to use a buffer in memory to st
 
 Another standard implementation for immutable strings is called \textit{ropes} \cite{ropepaper}. This design uses concatenation trees to represent values. Concatenation is performed by creating a new node, and setting the children in the correct order. This provides very fast concatenation operator, and has proved very efficient for certain workloads.
 
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=8cm]{./graphs/rope.png}
+	\caption{Example of a string using the rope representation}
+	
+\end{figure}
+
 Ropes are better used when handling long-lived and big strings. On shorter values, they tend to have a high-memory overhead. Tree traversal is also an expensive operation. Therefore, ropes might not be well-suited to our use case in PL/SQL, as \varchar{} values are typically short and short-lived. Since the database stores results from call to PL/SQL in it's own flat buffer, rope values cannot be returned without a conversion into a flat representation. This is an expensive operation to perform on trees, requiring a tree traversal that induces many virtual calls that are hard to optimize. Finally, a solution based on trees would require allocation for every value, because the pointed values are abstract classes, which cannot be easily virtualized by Graal.
 
 Because we deem both solutions to be ill-suited for our specific use, we devise a new representation for \varchar{}, tailored for PL/SQL, which uses linked-list for concatenation.
@@ -1246,11 +1253,17 @@ Because we deem both solutions to be ill-suited for our specific use, we devise 
 
 We start with the naive design, and improve on it gradually. Values in this system are represented by a \java{byte} array for the buffer, and a length attribute. Note that we do no support multiple character sets, so a \java{byte} implementation is enough for now.
 
-To improve performance, the first thing to do  is to avoid copies. The best candidate for that is the copy at the boundary between SQL and PL/SQL. When the Truffle interpreter is called, the call comes from the database environment. The values passed as arguments are therefore C structures and values. This is incompatible with the Java environment, and requires a copy / conversion to take place to represent the same value in the Java heap. Note that this happens twice per function call : once for the arguments, and once for the return values, which must be converted the other way around. This incurs a major cost, especially on repeated calls handling short strings. To avoid this overhead, we propose to support the C values directly. However, we must also support some form of Java heap value, as we can't create C values. We call \textit{native} values the ones coming from C, and \textit{heap} values the ones lying in the Java environment.
+To improve performance, the first thing to do  is to avoid copies. The best candidate for that is the copy at the boundary between SQL and PL/SQL. When the Truffle interpreter is called, the call comes from the database environment. The values passed as arguments are therefore C structures and values. This is incompatible with the Java environment, and requires a copy / conversion to take place to represent the same value in the Java heap. Note that this happens twice per function call : once for the arguments, and once for the return values, which must be converted the other way around. This incurs a major cost, especially on repeated calls handling short strings. To avoid this overhead, we propose to support the C values directly. However, we must also support some form of Java heap value, as we can't efficiently create C values. We call \textit{native} values the ones coming from C, and \textit{heap} values the ones lying in the Java environment.
+
+\begin{figure}[bt]
+	\centering
+	\includegraphics[width=10cm]{./graphs/BaseValues.png}
+	\caption{The memory representation for the two types of base values.}
+\end{figure}
 
 To cope with native C values in our Java code, we use the C API that SVM provides. This allows simple access to these structures in the Java implementation. However, this duality means that values of the type \varchar{} are not bound to a single representation anymore. We already saw a similar example when dealing with \plsnull{} and \plsi{}, so we already have the typed node structure in place, and only need to add more specializations to cover the additional cases. In order to speed up the substring operator, which does not require any copy, we add a start index field to our \varchar{} values. Together with the length, this provides a copy-free substring operation, which only changes the indexes. This will also be useful when implementing other operators.
 
-To recap, we now have two kinds of values in the interpreter to represent \varchar{} : heap values, whose buffer is a \java{byte} array in the Java heap, and native values, whose buffer is a C pointer. Both are augmented with a length and a starting index. This solution still requires copy for the concatenation operator, which we want to optimize.
+To recap, we now have two kinds of values in the interpreter to represent \varchar{} : heap values, whose buffer is a \java{byte} array in the Java heap, and native values, whose buffer is a C pointer. Both are augmented with a length and a starting index to provide efficient substring operations. This solution still requires copy for the concatenation operator, which we want to optimize.
 
 %To improve performance over the naive implementation, we must avoid copies of buffers when possible. The first step is to avoid copying the initial values supplied.
 %
@@ -1284,9 +1297,18 @@ To recap, we now have two kinds of values in the interpreter to represent \varch
 %\item flattening cheaper than tree-based ropes
 %\end{itemize}
 
-We now show how to optimize concatenation using a linked list design. The elements of the lists are \textit{base values}. We call \textit{base value} the representations based on a buffer, like the native and heap values discussed above. With this design, concatenation is very simple. We only need to make the last element of the \textit{left} list point to the \textit{right} one. 
+We now show how to optimize concatenation using a linked list design. The elements of the lists are \textit{base values}. We call \textit{base value} the representations based on a buffer, like the native and heap values discussed above.
 
-However, this simple design does not meet the immutability constraint. To fix this issue, we present \textit{horizon-based linked lists}. On top of the underlying linked list, this representation knows which nodes belong to it. Instead of assuming that the next node in the list always belong to this value, horizon-based linked lists (HBL) keep track of the number of nodes it contains. This allows for concatenation to remain cheap, but ensure immutability : the original values do not see "past" the number of nodes it contains, so it is safe to append new nodes to it.
+In this design, concatenation is very simple. Each base value is wrapped inside a linked list node. When concatenating two base values, we wrap the two inside a node, and make the left value point the the right one. When concatenating two list-based values, we only need to make the last element of the left list point to the right one. In this case, the right element can also be a base value we just wrapped in a node. Examples of these cases are shown in Figures \ref{fig:baseconcat} and \ref{fig:hblconcat}.
+
+\begin{figure}[bt]
+	\centering
+	\includegraphics[width=10cm]{./graphs/ConcatBase.png}
+	\caption[Concatenation of two base values in the linked-list design]{Concatenation of two base values in the linked-list design. The final value is the horizon-based linked list.}
+	\label{fig:baseconcat}
+\end{figure}
+
+However, this simple design does not meet the immutability constraint. Appending a new element to an already existing list changes the original value by extending it. To fix this issue, we present \textit{horizon-based linked lists}. In addition to the underlying linked list, this representation knows which nodes belong to it. Instead of assuming that the next node in the list always belong to this value, horizon-based linked lists (HBL) keep track of the number of nodes it contains. This allows for concatenation to remain cheap, but ensure immutability : the original values do not see "past" the number of nodes it contains, so it is safe to append new nodes to it.
 
 %However, we have a few added constraints that require a more complex design.
 
@@ -1301,7 +1323,7 @@ However, this simple design does not meet the immutability constraint. To fix th
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=11cm]{./graphs/hblconcat.png}
-	\caption[Concatenation of two horizon-based linked lists]{Concatenation of two horizon-based linked lists. The boxes denote the scope, or horizon, of each value.}
+	\caption[Concatenation of two horizon-based linked lists]{Concatenation of two horizon-based linked lists.\\ \small The boxes denote the scope, or horizon, of each value. Notice A and B are unchanged, although their list have been modified.}
 	\label{fig:hblconcat}
 \end{figure}
 
@@ -1396,11 +1418,13 @@ This might make the type analysis harder for Graal, as the return type of some o
 
 Because builtins are the only way to use \varchar{} values, it is very important that we provide support for a good number of core builtin functions. We currently have concatenation (\pls{||}), \pls{SUBSTR}, \pls{REPLACE} and \pls{LENGTH}. These have been chosen because they are among the most commonly used operators, and because they are enough to program a lot of basic functionalities one would want for \varchar{}.
 
-We already talked about the implementations of concatenation and substring. It is interesting to note that the \pls{REPLACE} implementation we have uses concept from both of these. In our system, replacing pieces of a string does not require any copy or buffer transfer. Instead, it is the concatenation of substrings provided as input. Any part of the input string that does not match the given pattern can be reused in the result, and the replacement string can be reused wherever the pattern does match. This means re-using the buffer of the input values, without performing any copies, as shown in example \ref{fig:replaceexample}. Because we want to use the replacement string multiple times in a concatenation, we need to have it as a base value. For that, we use the same canonicalization optimization we used for substrings.
+We already talked about the implementations of concatenation and substring. For the \pls{REPLACE} builtin, we wanted to reuse these same concepts. A replace algorithm, based on a no-copy system was implemented, which would build concatenation lists, alternating between a substring from the input and a pointer to the replacement string. An example of how such an implementation works is shown in Figure \ref{fig:replaceexample}. However, following the benchmarking results, this implementation had to be changed for a simpler one, copying the result into a buffer. The original algorithm performed poorly, mainly because replacement operations already require the full string to be read, character by character. Therefore, copying each byte is not a lot more work.
+
+%It is interesting to note that the \pls{REPLACE} implementation we have uses concept from both of these. In our system, replacing pieces of a string does not require any copy or buffer transfer. Instead, it is the concatenation of substrings provided as input. Any part of the input string that does not match the given pattern can be reused in the result, and the replacement string can be reused wherever the pattern does match. This means re-using the buffer of the input values, without performing any copies, as shown in example \ref{fig:replaceexample}. Because we want to use the replacement string multiple times in a concatenation, we need to have it as a base value. For that, we use the same canonicalization optimization we used for substrings.
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=9cm]{./graphs/ReplacementExample.png}
+	\includegraphics[width=8cm]{./graphs/ReplacementExample.png}
 	\caption{Result of the operation \pls{REPLACE('JACK and JUE', 'J', 'BL')}, using list representation}
 	\label{fig:replaceexample}
 \end{figure}

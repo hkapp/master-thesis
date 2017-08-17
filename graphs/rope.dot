@@ -1,0 +1,18 @@
+digraph {
+    node [shape=circle];
+    n1 -> n2;
+    n1-> n3;
+    n2 -> t1;
+    n2 -> t2;
+    n3 -> t3;
+    n3 -> t4;
+
+    n1 [label=""];
+    n2 [label=""];
+    n3 [label=""];
+
+    t1 [label="The brown fox", shape=rect];
+    t2 [label="jumped", shape=rect];
+    t3 [label="ov", shape=rect];
+    t4 [label="er the fence", shape=rect];
+}
